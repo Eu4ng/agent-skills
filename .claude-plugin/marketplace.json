@@ -1,0 +1,12 @@
+{
+  "name": "eu4ng",
+  "owner": { "name": "eu4ng" },
+  "description": "eu4ng 의 개인 에이전트 스킬 마켓플레이스",
+  "plugins": [
+    {
+      "name": "eu4ng-skills",
+      "source": "./",
+      "description": "모든 저장소에서 공통으로 쓰는 개인 에이전트 스킬 모음"
+    }
+  ]
+}

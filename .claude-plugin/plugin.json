@@ -1,0 +1,7 @@
+{
+  "name": "eu4ng-skills",
+  "description": "모든 저장소에서 공통으로 쓰는 개인 에이전트 스킬 모음",
+  "author": { "name": "eu4ng" },
+  "repository": "https://github.com/eu4ng/agent-skills",
+  "license": "MIT"
+}
