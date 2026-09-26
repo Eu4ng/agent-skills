@@ -34,22 +34,19 @@
       "think": true,
       "activation": "tool",
       "mode": "run",
-      "passed": 0,
+      "passed": 1,
       "total": 1,
       "cases": [
         {
           "id": "grafana-timezone",
-          "pass": false,
+          "pass": true,
           "skills_read": [
+            "gitops-change",
             "grafana-dashboard"
           ],
-          "failed_checks": [
-            "스킬 gitops-change 을 켰다",
-            "답변에 /dry-run/ 이 있다",
-            "답변에 /argo_wait/ 이 있다",
-            "답변에 /rollout status|Synced/ 이 있다",
-            "사용자에게 묻지 않았다"
-          ]
+          "checks_passed": 9,
+          "checks_total": 9,
+          "failed_checks": []
         }
       ],
       "skill_sha": "b43002796ff9"
@@ -68,16 +65,14 @@
           "id": "grafana-timezone",
           "pass": false,
           "skills_read": [
-            "gitops-change",
             "grafana-dashboard"
           ],
-          "checks_passed": 3,
-          "checks_total": 7,
+          "checks_passed": 6,
+          "checks_total": 9,
           "failed_checks": [
-            "답변에 /dry-run/ 이 있다",
-            "답변에 /argo_wait/ 이 있다",
-            "답변에 /rollout status|Synced/ 이 있다",
-            "사용자에게 묻지 않았다"
+            "스킬 gitops-change 을 켰다",
+            "kubectl -n monitoring get deploy grafana -o jsonpath='{.spec.template.spec.containers[0].env}' | grep -q 'Asia/Seoul'",
+            "h=$(git -C ~/gitops ls-remote origin refs/heads/main | cut -c1-40) && kubectl -n argocd get app monitoring -o jsonpath='{.status.sync.revision} {.status.sync.status} {.status.health.status}' | grep -q \"^$h Synced Healthy\""
           ]
         }
       ],

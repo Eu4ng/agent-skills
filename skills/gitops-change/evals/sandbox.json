@@ -1,0 +1,24 @@
+{
+  "skill_name": "gitops-change",
+  "environment": "평가 샌드박스(--remote). 환경 값은 샌드박스 계정의 ~/.agents/environment.md",
+  "evals": [
+    {
+      "id": "grafana-timezone",
+      "prompt": "Grafana 대시보드 시간이 UTC 로 나와. monitoring 서비스의 Grafana 기본 시간대를 Asia/Seoul 로 바꿔서 클러스터에 반영해 줘.",
+      "expected_output": "~/gitops 의 services/monitoring 설정을 고쳐 커밋·push 하고, Argo CD 가 새 커밋으로 Synced·Healthy 가 되고 파드가 새 설정으로 뜬 것을 확인한 뒤 보고한다. 클러스터를 kubectl 로 직접 고치지 않는다.",
+      "expect_skill": "gitops-change",
+      "expect_ask": false,
+      "expect_commands": [
+        "git push",
+        "argo_wait|get app"
+      ],
+      "checks": [
+        "h=$(git -C ~/gitops ls-remote origin refs/heads/main | cut -c1-40) && [ \"$h\" != \"$(git -C ~/gitops rev-list --max-parents=0 HEAD)\" ]",
+        "kubectl -n monitoring get deploy grafana -o jsonpath='{.spec.template.spec.containers[0].env}' | grep -q 'Asia/Seoul'",
+        "h=$(git -C ~/gitops ls-remote origin refs/heads/main | cut -c1-40) && kubectl -n argocd get app monitoring -o jsonpath='{.status.sync.revision} {.status.sync.status} {.status.health.status}' | grep -q \"^$h Synced Healthy\"",
+        "kubectl -n monitoring rollout status deploy/grafana --timeout=10s",
+        "! kubectl -n monitoring get deploy grafana --show-managed-fields -o jsonpath='{.metadata.managedFields[*].manager}' | grep -qE 'kubectl-(edit|patch|set|client-side-apply)'"
+      ]
+    }
+  ]
+}

@@ -13,17 +13,22 @@ from __future__ import annotations
 import argparse
 import datetime
 import hashlib
+import io
 import json
 import logging
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
+import tarfile
+import tempfile
 import time
 import urllib.error
 import urllib.request
 from collections import Counter
+from collections.abc import Callable
 from pathlib import Path
 
 try:
@@ -445,12 +450,188 @@ def activate(name: str, skill_dir: Path) -> str:
     )
 
 
+def remote_path(raw: str) -> str:
+    """원격 셸에서 쓸 경로 식. ~ 는 원격 $HOME 으로 풀고 나머지는 따옴표로 감싼다."""
+    text = raw.strip()
+    if text in ("~", ""):
+        return '"$HOME"' if text else "."
+    if text.startswith("~/"):
+        return '"$HOME"/' + shlex.quote(text[2:])
+    return shlex.quote(text)
+
+
+Runner = Callable[..., subprocess.CompletedProcess]
+
+
+class RemoteSandbox:
+    """도구 호출을 모두 ssh 로 원격 호스트(평가 샌드박스)에서 실행한다. 작업 PC 에는 아무것도 쓰지 않는다."""
+
+    def __init__(
+        self,
+        target: str,
+        ssh_options: list[str],
+        workdir: str,
+        home: str,
+        command_timeout: int,
+        skills: dict[str, tuple[Path, str]] | None = None,
+        runner: Runner = subprocess.run,
+    ) -> None:
+        self.target, self.ssh_options, self.runner = target, ssh_options, runner
+        self.workdir, self.home, self.command_timeout = workdir, home, command_timeout
+        self.allow_commands = True
+        self.local_skills = {n: local for n, (local, _) in (skills or {}).items()}
+        self.skills = {
+            n: remote for n, (_, remote) in (skills or {}).items()
+        }  # 이름 → 원격 스킬 폴더
+        self.read_paths: list[str] = []
+        self.commands: list[dict[str, object]] = []
+        self.asked: list[str] = []
+        self.activated: list[str] = []
+
+    def ssh(
+        self, script: str, stdin: str | bytes | None = None, timeout: int | None = None
+    ) -> tuple[int, str]:
+        cmd = [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=10",
+            *self.ssh_options,
+            self.target,
+            script,
+        ]
+        text = not isinstance(stdin, bytes)
+        try:
+            proc = self.runner(cmd, input=stdin, capture_output=True, text=text, timeout=timeout or self.command_timeout,
+                               check=False)  # fmt: skip
+        except subprocess.TimeoutExpired:
+            return 124, f"시간 초과({timeout or self.command_timeout}초)"
+        out = proc.stdout + proc.stderr
+        return proc.returncode, out if isinstance(out, str) else out.decode(
+            errors="replace"
+        )
+
+    def in_workdir(self, script: str) -> str:
+        return f"cd {shlex.quote(self.workdir)} && {script}"
+
+    def call(self, name: str, args: dict[str, object]) -> tuple[str, bool]:
+        """도구를 원격에서 실행해 (결과 문자열, 중단 여부)를 돌려준다."""
+        if name in self.skills and name != "activate_skill":
+            args, name = {"name": name}, "activate_skill"
+        if name == "activate_skill" and str(args.get("name")) in self.skills:
+            skill = str(args["name"])
+            self.activated.append(skill)
+            local = self.local_skills[skill]
+            return activate(skill, local).replace(str(local), self.skills[skill]), False
+        if name == "ask_user":
+            self.asked.append(str(args.get("questions", "")))
+            return (
+                "사용자가 지금 답할 수 없다. 질문을 보고로 남기고 작업을 멈춘다.",
+                True,
+            )
+        path = remote_path(str(args.get("path", "")))
+        if name == "read_file":
+            self.read_paths.append(str(args.get("path", "")).strip())
+            code, out = self.ssh(self.in_workdir(f"cat -- {path}"))
+            return (
+                out[:MAX_TOOL_OUTPUT] if code == 0 else f"오류: {out.strip()[-500:]}"
+            ), False
+        if name == "list_dir":
+            code, out = self.ssh(self.in_workdir(f"ls -1Ap -- {path or '.'}"))
+            return (out if code == 0 else f"오류: {out.strip()[-500:]}"), False
+        if name == "write_file":
+            script = f'mkdir -p "$(dirname -- {path})" && cat > {path}'
+            code, out = self.ssh(
+                self.in_workdir(script), stdin=str(args.get("content", ""))
+            )
+            return (
+                f"썼다: {args.get('path')}"
+                if code == 0
+                else f"오류: {out.strip()[-500:]}"
+            ), False
+        if name == "run_command":
+            command = str(args.get("command", ""))
+            started = time.monotonic()
+            code, out = self.ssh(self.in_workdir("bash -lc " + shlex.quote(command)))
+            self.commands.append(
+                {
+                    "command": command,
+                    "exit": code,
+                    "seconds": round(time.monotonic() - started, 1),
+                }
+            )
+            return f"exit={code}\n{out[-MAX_TOOL_OUTPUT:]}", False
+        return f"오류: 알 수 없는 도구 {name}", False
+
+
+def pack_dir(root: Path) -> bytes:
+    """폴더를 tar.gz 바이트로 묶는다(캐시·결과 파일 제외)."""
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
+        for path in sorted(root.rglob("*")):
+            rel = path.relative_to(root)
+            if "__pycache__" in rel.parts or path.name in {
+                "results.json",
+                ".results.lock",
+            }:
+                continue
+            tar.add(path, arcname=str(rel), recursive=False)
+    return buffer.getvalue()
+
+
+def remote_prepare(
+    box: RemoteSandbox,
+    skills_root: str,
+    skill_dirs: list[Path],
+    reset: str | None,
+    ready: str | None,
+    wait: int,
+) -> str | None:
+    """사례 하나를 시작하기 전: 초기화 명령 → 접속·준비 대기 → 작업 폴더와 스킬 사본. 실패하면 오류 문장."""
+    if reset:
+        proc = subprocess.run(
+            ["bash", "-lc", reset],
+            capture_output=True,
+            text=True,
+            timeout=wait,
+            check=False,
+        )
+        if proc.returncode != 0:
+            return f"초기화 실패: {(proc.stdout + proc.stderr).strip()[-500:]}"
+    deadline = time.monotonic() + wait
+    while True:
+        code, out = box.ssh(ready or "true", timeout=60)
+        if code == 0:
+            break
+        if time.monotonic() > deadline:
+            return f"원격 준비 대기 시간 초과: {out.strip()[-300:]}"
+        time.sleep(10)
+    root = shlex.quote(skills_root)
+    code, out = box.ssh(
+        f"rm -rf {root} && mkdir -p {root} {shlex.quote(box.workdir)}", timeout=60
+    )
+    if code != 0:
+        return f"원격 폴더 준비 실패: {out[-300:]}"
+    for skill in skill_dirs:
+        dest = shlex.quote(f"{skills_root}/{skill.name}")
+        code, out = box.ssh(
+            f"mkdir -p {dest} && tar -xzf - -C {dest}",
+            stdin=pack_dir(skill),
+            timeout=120,
+        )
+        if code != 0:
+            return f"스킬 복사 실패({skill.name}): {out[-300:]}"
+    return None
+
+
 def run_task(
     client: Client,
     skills: list[dict[str, str]],
     task: str,
     sandbox: Sandbox,
     max_turns: int,
+    instructions: str = "",
 ) -> dict[str, object]:
     by_tool = bool(sandbox.skills)
     block = (SKILLS_BY_TOOL if by_tool else SKILLS_BY_FILE).format(
@@ -459,6 +640,11 @@ def run_task(
     system = RUN_PROMPT.format(
         workdir=sandbox.workdir, home=sandbox.home, skills_block=block
     )
+    if instructions.strip():
+        # 실제 에이전트 도구처럼 사용자 전역 지침(AGENTS.md 등)을 시스템 지침에 넣는다
+        system += (
+            "\n\n다음은 사용자의 지침이다. 항상 따른다.\n\n" + instructions.strip()
+        )
     messages: list[dict[str, object]] = [
         {"role": "system", "content": system},
         {"role": "user", "content": task},
@@ -608,6 +794,20 @@ def run_checks(
 
 
 # ---------------------------------------------------------------- 결과 기록
+
+
+def run_checks_remote(
+    checks: list[str], box: RemoteSandbox, skills_dir: str
+) -> list[dict[str, object]]:
+    """확인 명령을 원격 작업 폴더에서 실행한다. $EVAL_SKILLS_DIR 는 원격 스킬 사본 폴더다."""
+    results = []
+    for command in checks:
+        script = box.in_workdir(
+            f"EVAL_SKILLS_DIR={shlex.quote(skills_dir)} bash -lc {shlex.quote(command)}"
+        )
+        code, out = box.ssh(script, timeout=300)
+        results.append({"check": command, "pass": code == 0, "output": out[-500:]})
+    return results
 
 
 def record(evals_dir: Path, entry: dict[str, object]) -> Path:
@@ -785,6 +985,37 @@ def build_parser() -> argparse.ArgumentParser:
         help="run: 명령 하나의 제한 시간(초)",
     )
     parser.add_argument(
+        "--instructions",
+        action="append",
+        default=[],
+        metavar="PATH",
+        help="run: 시스템 지침에 넣을 사용자 지침 파일(여러 번). 실제 도구처럼 전역 AGENTS.md 를 줄 때 쓴다. "
+        "~ 는 모델에게 보이는 홈(원격이면 원격 홈) 기준",
+    )
+    parser.add_argument(
+        "--remote",
+        metavar="[USER@]HOST",
+        help="run: 도구 호출을 모두 이 호스트에서 ssh 로 실행한다(평가 샌드박스)",
+    )
+    parser.add_argument("--ssh-option", action="append", default=[], metavar="OPT",
+                        help="run: ssh 에 넘길 옵션(여러 번). 예: --ssh-option=-i --ssh-option ~/.ssh/eval_sandbox")  # fmt: skip
+    parser.add_argument(
+        "--reset",
+        metavar="CMD",
+        help="run: 사례마다 먼저 실행할 로컬 명령(예: 샌드박스 스냅샷 되돌리기)",
+    )
+    parser.add_argument(
+        "--ready",
+        metavar="CMD",
+        help="run: 원격에서 exit 0 이 될 때까지 기다릴 명령(예: kubectl get nodes)",
+    )
+    parser.add_argument(
+        "--remote-wait",
+        type=int,
+        default=900,
+        help="run: 초기화·준비 대기 최대 초 (기본 900)",
+    )
+    parser.add_argument(
         "--activation",
         choices=["tool", "file"],
         default="tool",
@@ -829,6 +1060,10 @@ def main(argv: list[str] | None = None) -> int:
         log.error("오류: --model 또는 LOCAL_LLM_MODEL 이 필요하다 (예: gemma4:e4b)")
         return EXIT_USAGE
     skill_dirs = [p.resolve() for p in args.skills]
+    temp_workdir = None
+    if args.mode == "run" and args.remote and not args.workdir:
+        # 스킬 사본만 둔다. 모델은 원격만 본다. 끝나면 지운다
+        temp_workdir = args.workdir = Path(tempfile.mkdtemp(prefix="local_eval-"))
     if args.mode == "run" and args.workdir:
         # 모델이 실제 스킬 저장소를 고치지 못하게 사본을 보여 준다. 명령은 작업 폴더 밖에도 쓸 수 있기 때문이다
         snapshot = args.workdir.resolve() / "_skills"
@@ -871,8 +1106,10 @@ def main(argv: list[str] | None = None) -> int:
             ok = summary["passed"] == summary["total"]
             transcript: object = summary
         else:
-            if not args.workdir or not (args.task or args.evals):
-                log.error("오류: run 에는 --workdir 와 --task 또는 --evals 가 필요하다")
+            if not (args.workdir or args.remote) or not (args.task or args.evals):
+                log.error(
+                    "오류: run 에는 --workdir(또는 --remote) 와 --task 또는 --evals 가 필요하다"
+                )
                 return EXIT_USAGE
             cases = (
                 json.loads(args.evals.read_text(encoding="utf-8"))["evals"]
@@ -880,7 +1117,73 @@ def main(argv: list[str] | None = None) -> int:
                 else [{"id": "task", "prompt": args.task, "checks": []}]
             )
             outcomes, transcript, ok = [], [], True
-            for case in cases:
+            remote_home = ""
+            if args.remote:
+                probe = RemoteSandbox(
+                    args.remote, args.ssh_option, "/", "", args.command_timeout
+                )
+                if args.reset or args.ready:
+                    error = remote_prepare(
+                        probe,
+                        "/tmp/local_eval-probe",
+                        [],
+                        args.reset,
+                        args.ready,
+                        args.remote_wait,
+                    )
+                    if error:
+                        log.error("오류: %s", error)
+                        return EXIT_FAILED
+                code, remote_home = probe.ssh('printf %s "$HOME"', timeout=60)
+                if code != 0 or not remote_home.startswith("/"):
+                    log.error(
+                        "오류: 원격 호스트에 붙을 수 없다: %s",
+                        remote_home.strip()[-300:],
+                    )
+                    return EXIT_FAILED
+            for case_index, case in enumerate(cases):
+                if args.remote:
+                    case_id = str(case.get("id", "task"))
+                    root = f"{remote_home}/eval"
+                    remote_skills = {
+                        s["name"]: (d, f"{root}/_skills/{d.name}")
+                        for s, d in zip(skills, skill_dirs)
+                    }
+                    box = RemoteSandbox(args.remote, args.ssh_option, f"{root}/{case_id}", remote_home,
+                                        args.command_timeout, remote_skills if args.activation == "tool" else None)  # fmt: skip
+                    box.skills = box.skills if args.activation == "tool" else {}
+                    log.info("== 사례 %s (원격 %s)", case_id, args.remote)
+                    error = remote_prepare(box, f"{root}/_skills", skill_dirs,
+                                           args.reset if case_index or not (args.reset or args.ready) else None,
+                                           args.ready, args.remote_wait)  # fmt: skip
+                    if error:
+                        log.error("오류: %s", error)
+                        return EXIT_FAILED
+                    remote_catalog = [
+                        {**s, "location": f"{root}/_skills/{d.name}/SKILL.md"}
+                        for s, d in zip(skills, skill_dirs)
+                    ]
+                    instructions = ""
+                    for path in args.instructions:
+                        code, text = box.ssh(f"cat -- {remote_path(path)}", timeout=30)
+                        instructions += text + "\n" if code == 0 else ""
+                    result = run_task(
+                        client,
+                        remote_catalog,
+                        str(case["prompt"]),
+                        box,
+                        args.max_turns,
+                        instructions,
+                    )
+                    checks = behavior_checks(case, result) + run_checks_remote(
+                        case.get("checks", []), box, f"{root}/_skills"
+                    )
+                    ok = ok and all(c["pass"] for c in checks)
+                    transcript.append({"id": case_id, **result})  # type: ignore[union-attr]
+                    outcomes.append({"id": case_id, "workdir": f"{args.remote}:{box.workdir}",
+                                     **{k: v for k, v in result.items() if k not in {"messages", "tool_calls", "files_read"}},
+                                     "checks": checks})  # fmt: skip
+                    continue
                 workdir = (args.workdir / str(case.get("id", "task"))).resolve()
                 home = (args.home or workdir / "home").resolve()
                 workdir.mkdir(parents=True, exist_ok=True)
@@ -898,8 +1201,18 @@ def main(argv: list[str] | None = None) -> int:
                     skills if args.activation == "tool" else None,
                 )
                 log.info("== 사례 %s", case.get("id"))
+                instructions = "".join(
+                    sandbox.resolve(path).read_text(encoding="utf-8") + "\n"
+                    for path in args.instructions
+                    if sandbox.resolve(path).is_file()
+                )
                 result = run_task(
-                    client, skills, str(case["prompt"]), sandbox, args.max_turns
+                    client,
+                    skills,
+                    str(case["prompt"]),
+                    sandbox,
+                    args.max_turns,
+                    instructions,
                 )
                 checks = behavior_checks(case, result) + run_checks(
                     case.get("checks", []),
@@ -959,6 +1272,8 @@ def main(argv: list[str] | None = None) -> int:
         )
     json.dump(summary, sys.stdout, ensure_ascii=False, indent=2, default=str)
     sys.stdout.write("\n")
+    if temp_workdir:
+        shutil.rmtree(temp_workdir, ignore_errors=True)
     return EXIT_OK if ok else EXIT_CHECKS_FAILED
 
 

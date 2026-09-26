@@ -1,0 +1,21 @@
+{
+  "skill_name": "grafana-dashboard",
+  "environment": "평가 샌드박스(--remote). 환경 값은 샌드박스 계정의 ~/.agents/environment.md",
+  "evals": [
+    {
+      "id": "humidity-no-data",
+      "prompt": "home-records 대시보드에서 습도(humidity) 그래프가 안 나와. 고쳐 줘.",
+      "expected_output": "panel_check.py 로 오류 패널과 SQL 오류를 찾고, ~/gitops 의 대시보드 JSON 을 고쳐 push 한 뒤 반영을 기다려 다시 검사해 오류 0 을 확인한다. 자격 증명은 시크릿에서 꺼낸다.",
+      "expect_skill": "grafana-dashboard",
+      "expect_ask": false,
+      "expect_commands": [
+        "panel_check",
+        "git push"
+      ],
+      "checks": [
+        "git -C ~/gitops fetch -q && ! git -C ~/gitops show origin/main:services/monitoring/dashboards/home-records.json | grep -q 'property = \\$property'",
+        "P=$(kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d); GRAFANA_URL=http://127.0.0.1:30082 GRAFANA_USER=admin GRAFANA_PASSWORD=\"$P\" python3 \"$EVAL_SKILLS_DIR/grafana-dashboard/scripts/panel_check.py\" --uid home-records | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[\"counts\"]); sys.exit(0 if d[\"counts\"][\"error\"] == 0 and d[\"counts\"][\"ok\"] >= 3 else 1)'"
+      ]
+    }
+  ]
+}

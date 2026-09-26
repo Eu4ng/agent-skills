@@ -36,15 +36,18 @@
       "total": 1,
       "cases": [
         {
-          "id": "no-data",
+          "id": "humidity-no-data",
           "pass": false,
           "skills_read": [
             "grafana-dashboard"
           ],
+          "checks_passed": 2,
+          "checks_total": 6,
           "failed_checks": [
-            "답변에 /panel_check/ 이 있다",
-            "답변에 /grafana-admin/ 이 있다",
-            "사용자에게 묻지 않았다"
+            "명령 /git push/ 을 실행했다",
+            "사용자에게 묻지 않았다",
+            "git -C ~/gitops fetch -q && ! git -C ~/gitops show origin/main:services/monitoring/dashboards/home-records.json | grep -q 'property = \\$property'",
+            "P=$(kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d); GRAFANA_URL=http://127.0.0.1:30082 GRAFANA_USER=admin GRAFANA_PASSWORD=\"$P\" python3 \"$EVAL_SKILLS_DIR/grafana-dashboard/scripts/panel_check.py\" --uid home-records | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[\"counts\"]); sys.exit(0 if d[\"counts\"][\"error\"] == 0 and d[\"counts\"][\"ok\"] >= 3 else 1)'"
           ]
         }
       ],
@@ -61,17 +64,18 @@
       "total": 1,
       "cases": [
         {
-          "id": "no-data",
+          "id": "humidity-no-data",
           "pass": false,
           "skills_read": [
             "grafana-dashboard"
           ],
           "checks_passed": 2,
-          "checks_total": 5,
+          "checks_total": 6,
           "failed_checks": [
-            "답변에 /panel_check/ 이 있다",
-            "답변에 /grafana-admin/ 이 있다",
-            "사용자에게 묻지 않았다"
+            "명령 /git push/ 을 실행했다",
+            "사용자에게 묻지 않았다",
+            "git -C ~/gitops fetch -q && ! git -C ~/gitops show origin/main:services/monitoring/dashboards/home-records.json | grep -q 'property = \\$property'",
+            "P=$(kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d); GRAFANA_URL=http://127.0.0.1:30082 GRAFANA_USER=admin GRAFANA_PASSWORD=\"$P\" python3 \"$EVAL_SKILLS_DIR/grafana-dashboard/scripts/panel_check.py\" --uid home-records | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[\"counts\"]); sys.exit(0 if d[\"counts\"][\"error\"] == 0 and d[\"counts\"][\"ok\"] >= 3 else 1)'"
           ]
         }
       ],

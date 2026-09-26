@@ -27,19 +27,22 @@ description: Grafana 대시보드를 만들거나 고칠 때 쓴다. 대시보�
    코드로 관리되는지는 사용자에게 묻지 않는다. 검사 결과와 원본 JSON 에서 찾는다.
 
    ```bash
-   ssh <Grafana 에 닿는 호스트> 'GRAFANA_URL=<주소> GRAFANA_USER=<사용자> GRAFANA_PASSWORD=<비밀번호> python3 - --uid <대시보드 uid>' < scripts/panel_check.py
+   python3 <이 스킬 폴더>/scripts/panel_check.py --uid <대시보드 uid> --url <Grafana 주소> \
+     --admin-secret <ns>/<시크릿 이름> --kubectl "<kubectl 실행 명령>"
    ```
 
-   자격 증명은 사용자에게 묻지 않고 시크릿에서 꺼내 같은 명령 안에서 넘긴다. 예:
-   `P=$(kubectl -n <ns> get secret <시크릿> -o jsonpath="{.data.<키>}" | base64 -d)`
-3. **원본 JSON 을 스크립트로 고친다.** 대시보드가 코드로 관리되면 Grafana 화면이나 API 로 저장하지 않고 원본 파일을
-   고친다. 큰 JSON 은 문자열 치환 대신 `python3` 으로 읽고 고쳐 다시 쓴다. 같은 종류의 패널·변수가 여러 개면 전부
+   자격 증명은 `--admin-secret` 이 시크릿에서 직접 읽는다. 사용자에게 묻지 않고, 직접 꺼내 출력하거나 명령에 붙여 넣지 않는다.
+3. **원본 JSON 을 스크립트로 고친다.** 대시보드가 코드로 관리되면(GitOps 저장소에 대시보드 JSON 이 있으면) Grafana 화면이나
+   API 로 대시보드를 받아 고치거나 저장하지 않는다. 저장소의 원본 파일을 고친다. 검사 결과의 `error`·`sql` 에 나온 쿼리를
+   원본 파일에서 찾아(`grep`) 고친다. 큰 JSON 은 문자열 치환 대신 `python3` 으로 읽고 고쳐 다시 쓴다. 같은 종류의 패널·변수가 여러 개면 전부
    같은 규칙으로 고친다.
-4. **배포한다.** 원본 저장소의 절차(GitOps 면 push 와 동기화 대기)를 따른다.
+4. **배포한다.** 원본 저장소의 절차를 따른다. GitOps 면 커밋·push 하고, 동기화 도구가 새 커밋으로 Synced 가 될 때까지 기다린다.
 5. **반영을 기다린 뒤 다시 검사한다.** 새 JSON 에만 있는 문자열로 배포 반영을 확인하고 전체 패널을 검사한다.
 
    ```bash
-   ssh <호스트> '... python3 - --uid <uid> --wait-contains "<새 JSON 에만 있는 문자열>" --wait 180' < scripts/panel_check.py
+   python3 <이 스킬 폴더>/scripts/panel_check.py --uid <uid> --url <Grafana 주소> \
+     --admin-secret <ns>/<시크릿 이름> --kubectl "<kubectl 실행 명령>" \
+     --wait-contains "<새 JSON 에만 있는 문자열>" --wait 300
    ```
 
 6. **검증**: `counts.error` 가 0 이고, 데이터가 있어야 할 패널이 `empty` 가 아닐 때까지 고치고 다시 실행한다.
@@ -80,7 +83,7 @@ description: Grafana 대시보드를 만들거나 고칠 때 쓴다. 대시보�
 
 - `scripts/panel_check.py`: 대시보드의 모든 패널(반복 패널은 값마다)의 SQL 쿼리를 `/api/ds/query` 로 실행해
   ok·empty·error 를 JSON 으로 낸다. 변수 쿼리도 실제로 실행하고, 저장된 선택값과 사용자 정의 All 값을 Grafana 처럼
-  끼워 넣는다. 표준 라이브러리만 쓴다. `--help` 참고.
+  끼워 넣는다. `--admin-secret` 과 `--kubectl` 로 자격 증명을 시크릿에서 직접 읽는다. 표준 라이브러리만 쓴다. `--help` 참고.
 
 ## 하지 않는 것
 

@@ -15,6 +15,8 @@ import base64
 import json
 import os
 import re
+import shlex
+import subprocess
 import sys
 import time
 import urllib.error
@@ -34,6 +36,36 @@ Fetch = Callable[[str, str, dict | None], dict]
 
 class HttpError(Exception):
     pass
+
+
+def kubectl_argv(prefix: str, args: list[str]) -> list[str]:
+    """kubectl 실행 명령에 인자를 붙인다. 'ssh <호스트> kubectl' 처럼 ssh 를 거치면 원격 부분을 한 문자열로 묶는다."""
+    tokens = shlex.split(prefix)
+    if tokens and tokens[0] == "ssh":
+        cut = next(
+            (i for i, t in enumerate(tokens) if t.endswith(("kubectl", "k3s"))),
+            len(tokens),
+        )
+        return tokens[:cut] + [shlex.join(tokens[cut:] + args)]
+    return tokens + args
+
+
+def load_admin_secret(prefix: str, ref: str) -> None:
+    """시크릿(네임스페이스/이름)의 admin-user·admin-password 를 환경 변수로 읽어 둔다. 값은 출력하지 않는다."""
+    ns, _, name = ref.partition("/")
+    for key, env in (
+        ("admin-user", "GRAFANA_USER"),
+        ("admin-password", "GRAFANA_PASSWORD"),
+    ):
+        out = subprocess.run(
+            kubectl_argv(prefix, ["-n", ns, "get", "secret", name, "-o", f"jsonpath={{.data.{key}}}"]),
+            capture_output=True, text=True, timeout=60, check=False,
+        )  # fmt: skip
+        if out.returncode != 0 or not out.stdout.strip():
+            raise HttpError(
+                f"시크릿 {ref} 의 {key} 를 읽지 못했다: {out.stderr.strip()[-200:]}"
+            )
+        os.environ[env] = base64.b64decode(out.stdout.strip()).decode()
 
 
 def make_fetch(url: str, timeout: int) -> Fetch:
@@ -290,7 +322,8 @@ def build_parser() -> argparse.ArgumentParser:
             "예:\n"
             "  GRAFANA_USER=admin GRAFANA_PASSWORD=... python3 panel_check.py --url http://127.0.0.1:3000 --uid my-dash\n"
             "  ssh <호스트> 'GRAFANA_URL=... GRAFANA_USER=... GRAFANA_PASSWORD=... python3 - --uid my-dash' < panel_check.py\n"
-            "  python3 panel_check.py --uid my-dash --wait-contains 'state-timeline' --wait 180\n\n"
+            "  python3 panel_check.py --uid my-dash --wait-contains 'state-timeline' --wait 180\n"
+            '  python3 panel_check.py --uid my-dash --url http://<Grafana> --admin-secret monitoring/grafana-admin --kubectl "ssh cp kubectl"\n\n'
             '출력: {"dashboard", "version", "updated", "variables": [...], "counts": {ok, empty, error, skipped},\n'
             '       "panels": [{panel, type, status: ok|empty|error|skipped, rows, error?, sql?, repeat?}]}\n'
             "exit code: 0 오류 없음(빈 결과는 --fail-empty 일 때만 실패), 1 오류 또는 빈 결과,\n"
@@ -299,6 +332,12 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--uid", required=True, help="대시보드 uid")
+    parser.add_argument(
+        "--admin-secret", metavar="NS/NAME",
+        help="관리자 자격 증명 시크릿(키 admin-user, admin-password). 주면 --kubectl 로 읽는다. 값은 출력하지 않는다",
+    )  # fmt: skip
+    parser.add_argument("--kubectl", default="kubectl", metavar="CMD",
+                        help='--admin-secret 을 읽을 kubectl 실행 명령 (기본 kubectl). 예: "ssh cp kubectl"')  # fmt: skip
     parser.add_argument(
         "--url",
         default=os.environ.get("GRAFANA_URL", "http://127.0.0.1:3000"),
@@ -350,6 +389,12 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError:
         print("오류: --var 는 NAME=V1,V2 형식이다", file=sys.stderr)
         return EXIT_USAGE
+    if args.admin_secret and not os.environ.get("GRAFANA_TOKEN"):
+        try:
+            load_admin_secret(args.kubectl, args.admin_secret)
+        except (HttpError, OSError, subprocess.SubprocessError) as exc:
+            print(f"오류: {exc}", file=sys.stderr)
+            return EXIT_HTTP
     fetch = make_fetch(args.url, args.timeout)
     try:
         if args.wait_contains:

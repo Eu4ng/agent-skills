@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import subprocess
 import sys
 import time
@@ -20,10 +21,26 @@ EXIT_USAGE = 2
 EXIT_KUBECTL = 3
 
 
-def kubectl(base: list[str], args: list[str], timeout: int = 30) -> tuple[int, str]:
+def kubectl_argv(prefix: str, args: list[str]) -> list[str]:
+    """kubectl 실행 명령에 인자를 붙인다. 'ssh <호스트> kubectl' 처럼 ssh 를 거치면 원격 부분을 한 문자열로 묶는다."""
+    tokens = shlex.split(prefix)
+    if tokens and tokens[0] == "ssh":
+        cut = next(
+            (i for i, t in enumerate(tokens) if t.endswith(("kubectl", "k3s"))),
+            len(tokens),
+        )
+        return tokens[:cut] + [shlex.join(tokens[cut:] + args)]
+    return tokens + args
+
+
+def kubectl(base: str, args: list[str], timeout: int = 30) -> tuple[int, str]:
     try:
         proc = subprocess.run(
-            [*base, *args], capture_output=True, text=True, timeout=timeout, check=False
+            kubectl_argv(base, args),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
         )
     except FileNotFoundError:
         return 127, "kubectl 이 없다"
@@ -32,7 +49,7 @@ def kubectl(base: list[str], args: list[str], timeout: int = 30) -> tuple[int, s
     return proc.returncode, proc.stdout if proc.returncode == 0 else proc.stderr
 
 
-def app_state(base: list[str], ns: str, name: str) -> dict[str, object]:
+def app_state(base: str, ns: str, name: str) -> dict[str, object]:
     """앱 하나의 동기화 상태. 앱이 아직 없으면 exists=False."""
     code, out = kubectl(base, ["-n", ns, "get", "application", name, "-o", "json"])
     if code != 0:
@@ -77,6 +94,7 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "예:\n"
             "  python3 argo_wait.py grafana --revision 1a2b3c4 --refresh\n"
+            '  python3 argo_wait.py grafana --revision 1a2b3c4 --kubectl "ssh cp kubectl"   # 작업 PC 에서\n'
             "  ssh <호스트> 'python3 - weather --appset iot-hub --revision 1a2b3c4' < argo_wait.py\n"
             "  python3 argo_wait.py app-a --kubeconfig ~/edge.yaml   # 다른 클러스터의 Argo CD\n\n"
             '출력: {"ready": bool, "waited_seconds": n, "apps": [{app, revision, sync, health, '
@@ -99,6 +117,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--namespace", default="argocd", help="Argo CD 네임스페이스 (기본 argocd)"
     )
+    parser.add_argument("--kubectl", default="kubectl", metavar="CMD",
+                        help='kubectl 실행 명령 (기본 kubectl). 작업 PC 에서: "ssh cp kubectl"')  # fmt: skip
     parser.add_argument("--kubeconfig", help="kubectl 에 넘길 kubeconfig")
     parser.add_argument(
         "--timeout", type=int, default=600, help="최대 대기 초 (기본 600)"
@@ -111,7 +131,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    base = ["kubectl", *(["--kubeconfig", args.kubeconfig] if args.kubeconfig else [])]
+    base = args.kubectl + (
+        f" --kubeconfig {shlex.quote(args.kubeconfig)}" if args.kubeconfig else ""
+    )
     code, out = kubectl(base, ["version", "--client", "-o", "json"])
     if code != 0:
         print(f"오류: kubectl 을 쓸 수 없다: {out.strip()}", file=sys.stderr)

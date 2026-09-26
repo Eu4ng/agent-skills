@@ -34,15 +34,18 @@
       "total": 1,
       "cases": [
         {
-          "id": "enable-mqtt",
+          "id": "rename-outside-th",
           "pass": false,
           "skills_read": [
             "home-assistant-ops"
           ],
+          "checks_passed": 1,
+          "checks_total": 5,
           "failed_checks": [
-            "답변에 /ha-api-token/ 이 있다",
-            "답변에 /dry-run/ 이 있다",
-            "답변에 /integration/ 이 있다"
+            "명령 /ha_ws/ 을 실행했다",
+            "사용자에게 묻지 않았다",
+            "T=$(kubectl -n home-assistant get secret ha-api-token -o jsonpath=\"{.data.token}\" | base64 -d); kubectl -n home-assistant exec -i deploy/home-assistant -c home-assistant -- env HA_TOKEN=\"$T\" python3 - --list devices < \"$EVAL_SKILLS_DIR/home-assistant-ops/scripts/ha_ws.py\" | python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if any(x.get(\"name_by_user\") == \"outside-th\" for x in d[\"list\"][\"items\"]) else 1)'",
+            "D=$(T=$(kubectl -n home-assistant get secret ha-api-token -o jsonpath=\"{.data.token}\" | base64 -d); kubectl -n home-assistant exec -i deploy/home-assistant -c home-assistant -- env HA_TOKEN=\"$T\" python3 - --list devices < \"$EVAL_SKILLS_DIR/home-assistant-ops/scripts/ha_ws.py\" | python3 -c 'import json,sys; print(next(x[\"id\"] for x in json.load(sys.stdin)[\"list\"][\"items\"] if x.get(\"name\") == \"Outside Temperature\"))'); T=$(kubectl -n home-assistant get secret ha-api-token -o jsonpath=\"{.data.token}\" | base64 -d); kubectl -n home-assistant exec -i deploy/home-assistant -c home-assistant -- env HA_TOKEN=\"$T\" python3 - --list entities < \"$EVAL_SKILLS_DIR/home-assistant-ops/scripts/ha_ws.py\" | python3 -c 'import json,sys; d=sys.argv[1]; ids=[e[\"entity_id\"] for e in json.load(sys.stdin)[\"list\"][\"items\"] if e.get(\"device_id\") == d]; print(ids); sys.exit(0 if len(ids) == 3 and all(i.split(\".\",1)[1].startswith(\"outside_th\") for i in ids) else 1)' \"$D\""
           ]
         }
       ],
@@ -59,16 +62,16 @@
       "total": 1,
       "cases": [
         {
-          "id": "enable-mqtt",
+          "id": "rename-outside-th",
           "pass": false,
           "skills_read": [
             "home-assistant-ops"
           ],
+          "checks_passed": 3,
+          "checks_total": 5,
           "failed_checks": [
-            "답변에 /ha_ws/ 이 있다",
-            "답변에 /ha-api-token/ 이 있다",
-            "답변에 /dry-run/ 이 있다",
-            "답변에 /integration/ 이 있다"
+            "T=$(kubectl -n home-assistant get secret ha-api-token -o jsonpath=\"{.data.token}\" | base64 -d); kubectl -n home-assistant exec -i deploy/home-assistant -c home-assistant -- env HA_TOKEN=\"$T\" python3 - --list devices < \"$EVAL_SKILLS_DIR/home-assistant-ops/scripts/ha_ws.py\" | python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if any(x.get(\"name_by_user\") == \"outside-th\" for x in d[\"list\"][\"items\"]) else 1)'",
+            "D=$(T=$(kubectl -n home-assistant get secret ha-api-token -o jsonpath=\"{.data.token}\" | base64 -d); kubectl -n home-assistant exec -i deploy/home-assistant -c home-assistant -- env HA_TOKEN=\"$T\" python3 - --list devices < \"$EVAL_SKILLS_DIR/home-assistant-ops/scripts/ha_ws.py\" | python3 -c 'import json,sys; print(next(x[\"id\"] for x in json.load(sys.stdin)[\"list\"][\"items\"] if x.get(\"name\") == \"Outside Temperature\"))'); T=$(kubectl -n home-assistant get secret ha-api-token -o jsonpath=\"{.data.token}\" | base64 -d); kubectl -n home-assistant exec -i deploy/home-assistant -c home-assistant -- env HA_TOKEN=\"$T\" python3 - --list entities < \"$EVAL_SKILLS_DIR/home-assistant-ops/scripts/ha_ws.py\" | python3 -c 'import json,sys; d=sys.argv[1]; ids=[e[\"entity_id\"] for e in json.load(sys.stdin)[\"list\"][\"items\"] if e.get(\"device_id\") == d]; print(ids); sys.exit(0 if len(ids) == 3 and all(i.split(\".\",1)[1].startswith(\"outside_th\") for i in ids) else 1)' \"$D\""
           ]
         }
       ],

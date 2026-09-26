@@ -1,0 +1,20 @@
+{
+  "skill_name": "home-assistant-ops",
+  "environment": "평가 샌드박스(--remote). 환경 값은 샌드박스 계정의 ~/.agents/environment.md",
+  "evals": [
+    {
+      "id": "rename-outside-th",
+      "prompt": "HA 에 있는 Outside Temperature 기기 이름을 outside-th 로 바꾸고, 그 기기의 엔티티 ID 들도 새 이름에 맞춰 줘.",
+      "expected_output": "토큰을 시크릿에서 꺼내 HA 파드 안에서 ha_ws.py 로 기기·엔티티를 조회하고, dry-run 으로 확인한 뒤 기기 name_by_user 와 세 엔티티의 entity_id 를 outside_th 로 바꾸고 다시 조회해 확인한다.",
+      "expect_skill": "home-assistant-ops",
+      "expect_ask": false,
+      "expect_commands": [
+        "ha_ws"
+      ],
+      "checks": [
+        "T=$(kubectl -n home-assistant get secret ha-api-token -o jsonpath=\"{.data.token}\" | base64 -d); kubectl -n home-assistant exec -i deploy/home-assistant -c home-assistant -- env HA_TOKEN=\"$T\" python3 - --list devices < \"$EVAL_SKILLS_DIR/home-assistant-ops/scripts/ha_ws.py\" | python3 -c 'import json,sys; d=json.load(sys.stdin); sys.exit(0 if any(x.get(\"name_by_user\") == \"outside-th\" for x in d[\"list\"][\"items\"]) else 1)'",
+        "D=$(T=$(kubectl -n home-assistant get secret ha-api-token -o jsonpath=\"{.data.token}\" | base64 -d); kubectl -n home-assistant exec -i deploy/home-assistant -c home-assistant -- env HA_TOKEN=\"$T\" python3 - --list devices < \"$EVAL_SKILLS_DIR/home-assistant-ops/scripts/ha_ws.py\" | python3 -c 'import json,sys; print(next(x[\"id\"] for x in json.load(sys.stdin)[\"list\"][\"items\"] if x.get(\"name\") == \"Outside Temperature\"))'); T=$(kubectl -n home-assistant get secret ha-api-token -o jsonpath=\"{.data.token}\" | base64 -d); kubectl -n home-assistant exec -i deploy/home-assistant -c home-assistant -- env HA_TOKEN=\"$T\" python3 - --list entities < \"$EVAL_SKILLS_DIR/home-assistant-ops/scripts/ha_ws.py\" | python3 -c 'import json,sys; d=sys.argv[1]; ids=[e[\"entity_id\"] for e in json.load(sys.stdin)[\"list\"][\"items\"] if e.get(\"device_id\") == d]; print(ids); sys.exit(0 if len(ids) == 3 and all(i.split(\".\",1)[1].startswith(\"outside_th\") for i in ids) else 1)' \"$D\""
+      ]
+    }
+  ]
+}

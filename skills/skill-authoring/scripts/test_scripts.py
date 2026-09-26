@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -312,3 +313,68 @@ def test_report_marks_current_version(tmp_path: Path) -> None:
         "---\nname: rep\ndescription: 바뀜.\n---\n", encoding="utf-8"
     )
     assert local_eval.report([skill]).rstrip().endswith("| 아니오 |")
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("~/gitops/a b.txt", "\"$HOME\"/'gitops/a b.txt'"),
+        ("/etc/x", "/etc/x"),
+        ("rel/p", "rel/p"),
+        ("~", '"$HOME"'),
+    ],
+)
+def test_remote_path_expands_home_and_quotes(raw: str, expected: str) -> None:
+    assert local_eval.remote_path(raw) == expected
+
+
+def test_remote_sandbox_runs_every_tool_over_ssh(tmp_path: Path) -> None:
+    calls: list[dict] = []
+
+    def runner(cmd: list[str], **kw: object) -> subprocess.CompletedProcess:
+        calls.append({"cmd": cmd, "input": kw.get("input")})
+        return subprocess.CompletedProcess(cmd, 0, "OUT", "")
+
+    skill = make_skill(tmp_path, "act", "# 본문")
+    box = local_eval.RemoteSandbox(
+        "agent@sandbox", ["-i", "key"], "/home/agent/eval/c1", "/home/agent", 30,
+        {"act": (skill, "/home/agent/eval/_skills/act")}, runner=runner,
+    )  # fmt: skip
+    assert box.call("run_command", {"command": "kubectl get pods"})[0].startswith(
+        "exit=0"
+    )
+    box.call("write_file", {"path": "~/gitops/x.txt", "content": "내용"})
+    box.call("read_file", {"path": "notes.md"})
+    text, _ = box.call("activate_skill", {"name": "act"})
+    assert all(
+        c["cmd"][:2] == ["ssh", "-o"]
+        and "agent@sandbox" in c["cmd"]
+        and "-i" in c["cmd"]
+        for c in calls
+    )
+    scripts = [c["cmd"][-1] for c in calls]
+    assert scripts[0] == "cd /home/agent/eval/c1 && bash -lc 'kubectl get pods'"
+    assert 'cat > "$HOME"/gitops/x.txt' in scripts[1] and calls[1]["input"] == "내용"
+    assert scripts[2] == "cd /home/agent/eval/c1 && cat -- notes.md"
+    assert "/home/agent/eval/_skills/act" in text and str(skill) not in text
+    assert box.commands[0]["command"] == "kubectl get pods" and box.activated == ["act"]
+
+
+def test_pack_dir_skips_results_and_cache(tmp_path: Path) -> None:
+    import io
+    import tarfile
+
+    skill = make_skill(tmp_path, "pk", "# 본문")
+    (skill / "evals").mkdir()
+    (skill / "evals" / "results.json").write_text("{}", encoding="utf-8")
+    (skill / "__pycache__").mkdir()
+    (skill / "__pycache__" / "x.pyc").write_bytes(b"")
+    with tarfile.open(
+        fileobj=io.BytesIO(local_eval.pack_dir(skill)), mode="r:gz"
+    ) as tar:
+        names = tar.getnames()
+    assert (
+        "SKILL.md" in names
+        and "evals/results.json" not in names
+        and not any("__pycache__" in n for n in names)
+    )

@@ -18,7 +18,7 @@ description: Argo CD 같은 GitOps 도구가 관리하는 쿠버네티스 클러
 
 ## 빠른 절차
 
-1. **환경 정보를 읽는다.** `~/.agents/environment.md` 를 직접 열어 읽는다(있는지 사용자에게 묻지 않는다). 그 파일에서 kubectl 실행 위치, GitOps 저장소, 시크릿 위치를 확인한다.
+1. **환경 정보를 읽는다.** `~/.agents/environment.md` 를 직접 열어 읽는다(있는지 사용자에게 묻지 않는다). 그 파일에서 kubectl 실행 명령(예: `ssh cp kubectl`), GitOps 저장소, 시크릿 위치를 확인한다.
 2. **저장소 규칙을 읽는다.** 대상 GitOps 저장소의 AGENTS.md·README 에서 폴더 구조(폴더 = 앱 = 네임스페이스 등),
    커밋 규칙, 관련 문서 위치를 확인한다.
 3. **저장소를 고친다.** 클러스터를 직접 고치지 않는다. 같은 종류의 설정이 여러 곳에 있으면(여러 사이트 오버레이,
@@ -33,15 +33,18 @@ description: Argo CD 같은 GitOps 도구가 관리하는 쿠버네티스 클러
 
    Helm 차트 폴더는 `helm dependency build && helm template <이름> . -n <네임스페이스>` 로 렌더링한다.
 5. **커밋하고 push 한다.**
-6. **동기화를 기다린다.** 새 커밋이 반영되고 Synced·Healthy 가 될 때까지 기다린다.
+6. **동기화를 기다린다.** push 한 커밋 SHA 로 아래 명령을 실행해 출력의 `ready` 가 `true` 가 될 때까지 기다린다.
+   동기화 도구는 몇 분 간격으로 저장소를 보므로, push 직후의 클러스터는 아직 옛 상태다. **`ready: true` 를 보기 전에는
+   끝났다고 보고하지 않는다.**
 
    ```bash
-   ssh <kubectl 호스트> 'python3 - <앱 이름>... --revision <커밋 SHA> --refresh' < scripts/argo_wait.py
+   python3 <이 스킬 폴더>/scripts/argo_wait.py <앱 이름> --revision <커밋 SHA> --refresh --kubectl "<kubectl 실행 명령>"
    ```
 
    새 폴더를 더해 앱이 새로 생기는 경우에는 `--appset <ApplicationSet 이름>` 을 붙인다. 앱이 생길 때까지 몇 분 걸릴 수 있다.
 7. **실제 동작을 확인한다.** 다음을 모두 확인한다.
-   - `kubectl -n <ns> rollout status deploy/<이름> --timeout=300s`
+   - `kubectl -n <ns> rollout status deploy/<이름> --timeout=300s` (6단계 뒤에 해야 새 설정의 롤아웃을 본다)
+   - 바꾼 값이 배포된 리소스에 들어갔는지 직접 본다. 예: `kubectl -n <ns> get deploy <이름> -o jsonpath='{..env}'`
    - 로그에서 기대한 연결·시작 메시지를 확인한다.
    - 서비스를 불러 기대한 응답(HTTP 코드, 데이터)이 오는지 본다.
 
@@ -91,7 +94,7 @@ unset T
 ## 스크립트
 
 - `scripts/argo_wait.py`: 앱들이 지정한 커밋으로 Synced·Healthy 가 될 때까지 기다리고 결과를 JSON 으로 낸다.
-  kubectl 이 있는 호스트에서 실행한다(stdin 으로 넘겨도 된다). 표준 라이브러리만 쓴다. `--help` 참고.
+  작업 PC 에서 `--kubectl "<kubectl 실행 명령>"` 으로 부른다. 표준 라이브러리만 쓴다. `--help` 참고.
 
 ## 하지 않는 것
 

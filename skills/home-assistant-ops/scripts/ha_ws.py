@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 """Home Assistant WebSocket API 를 불러 레지스트리를 조회·변경한다. UI 로 하던 일을 명령으로 한다.
 
-aiohttp 가 필요하다. HA 컨테이너 안에는 이미 있으므로 보통 파드 안에서 stdin 으로 넘겨 실행한다:
-  kubectl -n <ns> exec -i deploy/<ha> -c <컨테이너> -- env HA_TOKEN="$T" python3 - --summary < ha_ws.py
-토큰은 HA_TOKEN 환경 변수로만 받는다(인자로 받지 않는다). 결과는 stdout 에 JSON 으로 낸다.
+작업 PC 에서 --kubectl 로 부르면 이 스크립트가 알아서 한다: 시크릿에서 토큰을 꺼내고(출력하지 않음), 자기 자신을
+HA 파드 안에서 실행한다(aiohttp 는 HA 컨테이너에 있다). 예:
+  python3 ha_ws.py --kubectl "ssh cp kubectl" --summary
+파드 안에서 직접 실행할 때는 토큰을 HA_TOKEN 환경 변수로 준다. 결과는 stdout 에 JSON 으로 낸다.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import base64
 import json
 import os
+import shlex
+import subprocess
 import sys
 from collections import Counter
+from pathlib import Path
 
 EXIT_OK = 0
 EXIT_FAILED = 1
@@ -107,12 +112,77 @@ async def run(
     return (EXIT_FAILED if failed else EXIT_OK), results
 
 
+def kubectl_argv(prefix: str, args: list[str]) -> list[str]:
+    """kubectl 실행 명령에 인자를 붙인다. 'ssh <호스트> kubectl' 처럼 ssh 를 거치면 원격 부분을 한 문자열로 묶는다."""
+    tokens = shlex.split(prefix)
+    if tokens and tokens[0] == "ssh":
+        cut = next(
+            (i for i, t in enumerate(tokens) if t.endswith(("kubectl", "k3s"))),
+            len(tokens),
+        )
+        return tokens[:cut] + [shlex.join(tokens[cut:] + args)]
+    return tokens + args
+
+
+def read_secret(prefix: str, ref: str) -> str:
+    """'네임스페이스/이름:키' 시크릿 값을 읽는다. 값은 출력하지 않는다."""
+    name, _, key = ref.partition(":")
+    ns, _, secret = name.partition("/")
+    out = subprocess.run(
+        kubectl_argv(prefix, ["-n", ns, "get", "secret", secret, "-o", f"jsonpath={{.data.{key or 'token'}}}"]),
+        capture_output=True, text=True, timeout=60, check=False,
+    )  # fmt: skip
+    if out.returncode != 0 or not out.stdout.strip():
+        raise RuntimeError(f"시크릿 {ref} 를 읽지 못했다: {out.stderr.strip()[-200:]}")
+    return base64.b64decode(out.stdout.strip()).decode()
+
+
+def run_in_pod(args: argparse.Namespace, forward: list[str]) -> int:
+    """토큰을 시크릿에서 꺼내 이 스크립트를 HA 파드 안에서 실행한다. 토큰은 인자가 아니라 stdin 으로 넘긴다."""
+    try:
+        token = read_secret(args.kubectl, args.token_secret)
+    except (RuntimeError, OSError, subprocess.SubprocessError) as exc:
+        print(f"오류: {exc}", file=sys.stderr)
+        return EXIT_AUTH
+    marker = "from __future__ import annotations\n"
+    source = (
+        Path(__file__)
+        .read_text(encoding="utf-8")
+        .replace(
+            marker,
+            marker + f"import os as _os\n_os.environ['HA_TOKEN'] = {token!r}\n",
+            1,
+        )
+    )
+    cmd = kubectl_argv(
+        args.kubectl,
+        ["-n", args.namespace, "exec", "-i", f"deploy/{args.deploy}", "-c", args.container, "--",
+         "python3", "-", *forward],
+    )  # fmt: skip
+    return subprocess.run(cmd, input=source, text=True, check=False).returncode
+
+
+def forward_args(argv: list[str]) -> list[str]:
+    """파드 안으로 넘길 인자: 작업 PC 전용 옵션(--kubectl 등)을 뺀다."""
+    drop = {"--kubectl", "--namespace", "--deploy", "--container", "--token-secret"}
+    forward, skip = [], False
+    for item in argv:
+        if skip:
+            skip = False
+        elif item in drop:
+            skip = True
+        elif item.split("=", 1)[0] not in drop:
+            forward.append(item)
+    return forward
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Home Assistant WebSocket API 로 레지스트리를 조회·변경한다.",
         epilog=(
             "예:\n"
-            "  ... python3 - --summary < ha_ws.py\n"
+            '  python3 ha_ws.py --kubectl "ssh cp kubectl" --summary   # 작업 PC 에서 (권장)\n'
+            "  ... python3 - --summary < ha_ws.py                      # 파드 안에서\n"
             "  ... python3 - --list entities --filter platform=mqtt < ha_ws.py\n"
             '  ... python3 - --dry-run --call \'{"type":"config/entity_registry/update","entity_id":"sensor.x",'
             '"new_entity_id":"sensor.y"}\' < ha_ws.py\n\n'
@@ -126,6 +196,30 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--url", default=os.environ.get("HA_URL", "ws://127.0.0.1:8123/api/websocket")
     )
+    parser.add_argument(
+        "--kubectl",
+        metavar="CMD",
+        help='작업 PC 에서: kubectl 실행 명령(예: "kubectl", "ssh cp kubectl")',
+    )
+    parser.add_argument(
+        "--namespace",
+        default="home-assistant",
+        help="--kubectl: HA 네임스페이스 (기본 home-assistant)",
+    )
+    parser.add_argument(
+        "--deploy",
+        default="home-assistant",
+        help="--kubectl: HA 배포 이름 (기본 home-assistant)",
+    )
+    parser.add_argument(
+        "--container",
+        default="home-assistant",
+        help="--kubectl: HA 컨테이너 (기본 home-assistant)",
+    )
+    parser.add_argument(
+        "--token-secret", default="home-assistant/ha-api-token:token", metavar="NS/NAME:KEY",
+        help="--kubectl: 장기 액세스 토큰 시크릿 (기본 home-assistant/ha-api-token:token)",
+    )  # fmt: skip
     parser.add_argument(
         "--summary",
         action="store_true",
@@ -159,6 +253,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.kubectl:
+        return run_in_pod(
+            args, forward_args(list(sys.argv[1:] if argv is None else argv))
+        )
     token = os.environ.get("HA_TOKEN")
     if not token:
         print(

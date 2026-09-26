@@ -28,16 +28,25 @@ HA 의 배포 설정(자원 한도, 이미지, 볼륨, 네트워크)을 바꾸�
 1. **환경 정보를 읽는다.** `~/.agents/environment.md` 를 직접 열어 읽는다(있는지 사용자에게 묻지 않는다). 그 파일에서 대상 HA(네임스페이스·배포), 토큰 시크릿 위치,
    kubectl 실행 위치를 확인한다. 여러 HA(지역별, 중앙)가 있으면 어느 인스턴스를 바꿀지 정한다. 토큰이 있는지
    사용자에게 묻지 않는다.
-2. **현재 상태를 본다.** 토큰을 시크릿에서 꺼내 같은 명령 안에서 넘기고, 파드 안에서 실행한다(aiohttp 가 파드에 있다).
+2. **현재 상태를 본다.** 작업 PC 에서 아래 명령을 그대로 실행한다. 스크립트가 토큰을 시크릿에서 읽어 HA 파드 안에서
+   실행하므로 토큰을 직접 꺼낼 필요가 없다. 토큰을 출력하거나 명령에 붙여 넣지 않는다.
 
    ```bash
-   ssh <kubectl 호스트> 'T=$(kubectl -n <ns> get secret <시크릿> -o jsonpath="{.data.<키>}" | base64 -d);
-     kubectl -n <ns> exec -i deploy/<HA> -c <컨테이너> -- env HA_TOKEN="$T" python3 - --summary' < scripts/ha_ws.py
+   python3 <이 스킬 폴더>/scripts/ha_ws.py --kubectl "<kubectl 실행 명령>" --summary
+   python3 <이 스킬 폴더>/scripts/ha_ws.py --kubectl "<kubectl 실행 명령>" --list devices --filter name=<기기 이름>
    ```
 
-3. **변경을 미리 본다.** 환경에 전용 운영 스크립트가 있으면 그것을 같은 방식으로 `--dry-run` 과 함께 쓴다. 없으면
-   `scripts/ha_ws.py --dry-run --call '<JSON>'` 로 보낼 메시지를 확인한다. 대상이 빠짐없이 들어갔는지 본다.
-4. **실행한다.** `--dry-run` 을 빼고 같은 명령을 실행한다.
+   네임스페이스·배포·토큰 시크릿이 기본값(`home-assistant`, `home-assistant/ha-api-token:token`)과 다르면
+   `--namespace`·`--deploy`·`--token-secret` 을 붙인다.
+3. **변경을 미리 본다.** 환경에 전용 운영 스크립트가 있으면 그것을 `--dry-run` 과 함께 쓴다. 없으면 같은 명령에
+   `--dry-run --call '<JSON>'` 을 붙여 보낼 메시지를 확인한다. 바꿀 대상(기기와 그 엔티티 전부)이 빠짐없이 들어갔는지 본다.
+
+   ```bash
+   python3 <이 스킬 폴더>/scripts/ha_ws.py --kubectl "<kubectl 실행 명령>" --dry-run \
+     --call '{"type":"config/entity_registry/update","entity_id":"sensor.old","new_entity_id":"sensor.new"}'
+   ```
+
+4. **실행한다.** `--dry-run` 을 빼고 같은 명령을 실행한다. 엔티티가 여러 개면 하나씩 모두 실행한다.
 5. **검증**:
    - 같은 dry-run 을 다시 실행해 할 일이 남지 않았는지 확인한다.
    - `--summary`·`--list` 로 결과를 확인한다.
@@ -82,7 +91,8 @@ HA 의 배포 설정(자원 한도, 이미지, 볼륨, 네트워크)을 바꾸�
 ## 스크립트
 
 - `scripts/ha_ws.py`: WebSocket API 호출기. `--summary`(엔티티·기기·영역 수, 비활성 이유별 수, 영역 없는 기기),
-  `--list`, `--call '<JSON>'`, `--dry-run` 을 지원한다. HA 컨테이너 안에서 stdin 으로 넘겨 실행한다. `--help` 참고.
+  `--list`, `--call '<JSON>'`, `--dry-run` 을 지원한다. 작업 PC 에서 `--kubectl "<kubectl 실행 명령>"` 으로 부르면
+  토큰 시크릿을 읽어 HA 파드 안에서 실행한다. `--help` 참고.
 
 ## 하지 않는 것
 
