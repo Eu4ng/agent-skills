@@ -1,0 +1,26 @@
+[
+  {
+    "query": "HA 에서 비활성화된 mqtt 엔티티 전부 켜 줘",
+    "expect": "home-assistant-ops"
+  },
+  {
+    "query": "기기 이름 bedroom2-th 로 바꿨는데 엔티티 ID 도 맞춰 줘",
+    "expect": "home-assistant-ops"
+  },
+  {
+    "query": "홈어시스턴트에서 방 배정 안 된 기기들 이름 보고 영역 알아서 넣어 줘",
+    "expect": "home-assistant-ops"
+  },
+  {
+    "query": "새 매터 센서 추가했어. 정리 좀 해 줘",
+    "expect": "home-assistant-ops"
+  },
+  {
+    "query": "home-assistant 파드 메모리 limit 2Gi 로 올려 줘",
+    "expect": "gitops-change"
+  },
+  {
+    "query": "zigbee2mqtt 웹 주소가 뭐였지",
+    "expect": null
+  }
+]

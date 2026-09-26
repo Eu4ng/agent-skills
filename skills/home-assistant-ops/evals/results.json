@@ -1,0 +1,137 @@
+{
+  "results": [
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-27",
+      "think": false,
+      "activation": "tool",
+      "mode": "run",
+      "passed": 0,
+      "total": 1,
+      "cases": [
+        {
+          "id": "enable-mqtt",
+          "pass": false,
+          "skills_read": [
+            "home-assistant-ops"
+          ],
+          "failed_checks": [
+            "답변에 /ha-api-token/ 이 있다"
+          ]
+        }
+      ],
+      "skill_sha": "2dca25c6a4cb"
+    },
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-27",
+      "think": true,
+      "activation": "tool",
+      "mode": "run",
+      "passed": 0,
+      "total": 1,
+      "cases": [
+        {
+          "id": "enable-mqtt",
+          "pass": false,
+          "skills_read": [
+            "home-assistant-ops"
+          ],
+          "failed_checks": [
+            "답변에 /ha-api-token/ 이 있다",
+            "답변에 /dry-run/ 이 있다",
+            "답변에 /integration/ 이 있다"
+          ]
+        }
+      ],
+      "skill_sha": "2dca25c6a4cb"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "api": "ollama",
+      "date": "2026-09-27",
+      "think": false,
+      "activation": "tool",
+      "mode": "run",
+      "passed": 0,
+      "total": 1,
+      "cases": [
+        {
+          "id": "enable-mqtt",
+          "pass": false,
+          "skills_read": [
+            "home-assistant-ops"
+          ],
+          "failed_checks": [
+            "답변에 /ha_ws/ 이 있다",
+            "답변에 /ha-api-token/ 이 있다",
+            "답변에 /dry-run/ 이 있다",
+            "답변에 /integration/ 이 있다"
+          ]
+        }
+      ],
+      "skill_sha": "2dca25c6a4cb"
+    },
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-27",
+      "think": false,
+      "runs": 5,
+      "mode": "trigger",
+      "passed": 5,
+      "total": 6,
+      "failures": [
+        {
+          "query": "home-assistant 파드 메모리 limit 2Gi 로 올려 줘",
+          "expect": "gitops-change",
+          "picks": [
+            "home-assistant-ops",
+            "home-assistant-ops",
+            "home-assistant-ops",
+            "home-assistant-ops",
+            "home-assistant-ops"
+          ]
+        }
+      ],
+      "skill_sha": "8b7ae1e54783"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "api": "ollama",
+      "date": "2026-09-27",
+      "think": false,
+      "runs": 5,
+      "mode": "trigger",
+      "passed": 4,
+      "total": 6,
+      "failures": [
+        {
+          "query": "새 매터 센서 추가했어. 정리 좀 해 줘",
+          "expect": "home-assistant-ops",
+          "picks": [
+            "none",
+            "none",
+            "none",
+            "none",
+            "none"
+          ]
+        },
+        {
+          "query": "home-assistant 파드 메모리 limit 2Gi 로 올려 줘",
+          "expect": "gitops-change",
+          "picks": [
+            "none",
+            "none",
+            "none",
+            "none",
+            "none"
+          ]
+        }
+      ],
+      "skill_sha": "2dca25c6a4cb"
+    }
+  ]
+}

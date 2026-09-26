@@ -1,0 +1,25 @@
+{
+  "skill_name": "home-assistant-ops",
+  "evals": [
+    {
+      "id": "enable-mqtt",
+      "prompt": "엣지 HA 에서 비활성화된 mqtt 엔티티를 전부 켜 줘. 이 환경에서는 명령을 직접 실행할 수 없으니, 실행할 명령을 순서대로 구체적으로 알려 줘.",
+      "expected_output": "ha-api-token 시크릿에서 토큰을 꺼내 파드 안에서 ha_ws.py 로 현재 상태를 보고, disabled_by 가 integration 인 mqtt 엔티티만 dry-run 으로 확인한 뒤 켜고, 다시 확인하는 순서를 제시한다. UI 안내로 끝내지 않는다.",
+      "home_files": {
+        ".agents/environment.md": "fixtures/environment.md"
+      },
+      "expect_skill": "home-assistant-ops",
+      "expect_ask": false,
+      "expect_final": [
+        "ha_ws",
+        "ha-api-token",
+        "dry-run",
+        "integration"
+      ],
+      "reject_final": [
+        "설정\\s*>\\s*기기|클릭하"
+      ],
+      "checks": []
+    }
+  ]
+}
