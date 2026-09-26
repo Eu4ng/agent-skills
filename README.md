@@ -9,6 +9,9 @@
 | `skill-authoring` | 표준·공급자 중립 방식으로 스킬을 만들고 고치는 절차, 검사 스크립트 |
 | `python-dev` | 공식 문서 기준 파이썬 스크립트·프로젝트·테스트 작성 규칙 |
 | `env-onboarding` | PC 별 환경 정보 파일(`~/.agents/environment.md`) 생성·점검 |
+| `gitops-change` | Argo CD 등 GitOps 클러스터 변경: 렌더링·dry-run, 동기화 대기(`argo_wait.py`), 동작 확인, 문서 동반 수정 |
+| `grafana-dashboard` | Grafana 대시보드 수정과 모든 패널 쿼리 실행 검사(`panel_check.py`) |
+| `home-assistant-ops` | Home Assistant 레지스트리·통합을 UI 대신 API 로 처리(`ha_ws.py`) |
 
 ## 설치
 

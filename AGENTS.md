@@ -27,7 +27,7 @@ uvx ruff format --check skills && uvx ruff check skills   # 파이썬 스크립�
 claude plugin validate .                                  # 이 명령이 있는 환경에서만
 ```
 
-스크립트 테스트도 돌린다: `uvx pytest -q -p no:cacheprovider skills/python-dev/assets skills/skill-authoring/scripts`
+스크립트 테스트도 돌린다: `uvx pytest -q -p no:cacheprovider skills` (각 스킬의 `test_*.py` 를 모두 찾는다)
 
 새로 만들거나 고친 스킬은 저사양 로컬 모델로도 점검한다. 모델 서버·이름은 `~/.agents/environment.md` 의
 `## 로컬 LLM` 절에서 읽는다. 트리거는 질의마다 5회 중 과반이 맞아야 하고, 실행 사례는 `checks` 가 모두 통과해야 한다.
