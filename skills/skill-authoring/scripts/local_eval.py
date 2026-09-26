@@ -565,16 +565,17 @@ class RemoteSandbox:
         return f"오류: 알 수 없는 도구 {name}", False
 
 
+# 모델에게 보이는 스킬 사본에서 뺀다. evals/ 에는 정답(확인 명령)과 가짜 환경 파일이 있어 모델이 그쪽으로 빠진다
+EXCLUDED_DIRS = {"__pycache__", "evals"}
+
+
 def pack_dir(root: Path) -> bytes:
-    """폴더를 tar.gz 바이트로 묶는다(캐시·결과 파일 제외)."""
+    """폴더를 tar.gz 바이트로 묶는다(캐시·점검 사례 제외)."""
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
         for path in sorted(root.rglob("*")):
             rel = path.relative_to(root)
-            if "__pycache__" in rel.parts or path.name in {
-                "results.json",
-                ".results.lock",
-            }:
+            if EXCLUDED_DIRS & set(rel.parts):
                 continue
             tar.add(path, arcname=str(rel), recursive=False)
     return buffer.getvalue()
@@ -1073,7 +1074,7 @@ def main(argv: list[str] | None = None) -> int:
                 shutil.copytree(
                     p,
                     snapshot / p.name,
-                    ignore=shutil.ignore_patterns("__pycache__", "results.json"),
+                    ignore=shutil.ignore_patterns(*EXCLUDED_DIRS),
                 )
             )
             for p in skill_dirs
@@ -1166,7 +1167,13 @@ def main(argv: list[str] | None = None) -> int:
                     instructions = ""
                     for path in args.instructions:
                         code, text = box.ssh(f"cat -- {remote_path(path)}", timeout=30)
-                        instructions += text + "\n" if code == 0 else ""
+                        if code != 0:
+                            log.error(
+                                "오류: 지침 파일을 읽을 수 없다: %s",
+                                text.strip()[-300:],
+                            )
+                            return EXIT_FAILED
+                        instructions += text + "\n"
                     result = run_task(
                         client,
                         remote_catalog,
@@ -1201,10 +1208,15 @@ def main(argv: list[str] | None = None) -> int:
                     skills if args.activation == "tool" else None,
                 )
                 log.info("== 사례 %s", case.get("id"))
+                missing = [
+                    p for p in args.instructions if not sandbox.resolve(p).is_file()
+                ]
+                if missing:
+                    log.error("오류: 지침 파일이 없다: %s", ", ".join(missing))
+                    return EXIT_FAILED
                 instructions = "".join(
                     sandbox.resolve(path).read_text(encoding="utf-8") + "\n"
                     for path in args.instructions
-                    if sandbox.resolve(path).is_file()
                 )
                 result = run_task(
                     client,

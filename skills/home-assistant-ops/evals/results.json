@@ -49,7 +49,7 @@
           ]
         }
       ],
-      "skill_sha": "2dca25c6a4cb"
+      "skill_sha": "92fe2f6e2ba2"
     },
     {
       "model": "qwen3.5:9b",
@@ -75,7 +75,7 @@
           ]
         }
       ],
-      "skill_sha": "2dca25c6a4cb"
+      "skill_sha": "92fe2f6e2ba2"
     },
     {
       "model": "gemma4:e4b",

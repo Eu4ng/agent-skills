@@ -360,13 +360,14 @@ def test_remote_sandbox_runs_every_tool_over_ssh(tmp_path: Path) -> None:
     assert box.commands[0]["command"] == "kubectl get pods" and box.activated == ["act"]
 
 
-def test_pack_dir_skips_results_and_cache(tmp_path: Path) -> None:
+def test_pack_dir_skips_evals_and_cache(tmp_path: Path) -> None:
     import io
     import tarfile
 
     skill = make_skill(tmp_path, "pk", "# 본문")
     (skill / "evals").mkdir()
     (skill / "evals" / "results.json").write_text("{}", encoding="utf-8")
+    (skill / "evals" / "sandbox.json").write_text("{}", encoding="utf-8")
     (skill / "__pycache__").mkdir()
     (skill / "__pycache__" / "x.pyc").write_bytes(b"")
     with tarfile.open(
@@ -375,6 +376,6 @@ def test_pack_dir_skips_results_and_cache(tmp_path: Path) -> None:
         names = tar.getnames()
     assert (
         "SKILL.md" in names
-        and "evals/results.json" not in names
+        and not any(n.startswith("evals") for n in names)
         and not any("__pycache__" in n for n in names)
     )
