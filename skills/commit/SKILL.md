@@ -1,11 +1,11 @@
 ---
 name: commit
-description: Git 커밋 메시지를 쓰거나 커밋을 만들 때 쓴다. Conventional Commits 1.0.0 과 @commitlint/config-conventional 기본 규칙을 따르고, 제목 문체는 저장소의 기존 이력에 맞춘다. 한국어 저장소는 명사형 종결, 영어 저장소는 명령형 소문자다. 커밋 단위 나누기, 본문·푸터 작성, 금지 사항을 담고 있다.
+description: 새 Git 커밋을 만들거나 새 커밋의 메시지를 쓸 때 쓴다. Conventional Commits 1.0.0 과 @commitlint/config-conventional 기본 규칙을 따르고, 제목 문체는 저장소의 기존 이력에 맞춘다. 한국어 저장소는 명사형 종결, 영어 저장소는 명령형 소문자다. 커밋 단위 나누기, 본문·푸터 작성, 금지 사항을 담고 있다. git 사용법을 묻는 질문처럼 지금 새 커밋을 만들지 않는 요청에는 쓰지 않는다.
 ---
 
 # 커밋 메시지 작성
 
-커밋 메시지는 [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) 을 따르고
+커밋 메시지는 Conventional Commits 1.0.0 을 따르고
 `@commitlint/config-conventional` 기본 규칙(타입 목록, 헤더 100자, 마침표 금지, 본문 줄 100자)을 어기지 않는다.
 표준이 정하지 않은 문체는 아래 규칙과 저장소의 기존 이력을 따른다.
 
@@ -97,3 +97,8 @@ Closes #42
 - `git commit --amend`, 이력 재작성은 사용자가 명시적으로 요청했을 때만 한다. 사전에 정해 둔 지침이
   있어도 이 둘은 예외로 삼지 않는다.
 - 스테이징되지 않은 파일을 임의로 `git add` 하지 않는다. 무엇을 담을지는 사용자와 확인한다.
+
+## 참고
+
+- Conventional Commits 1.0.0: https://www.conventionalcommits.org/en/v1.0.0/
+- commitlint config-conventional: https://github.com/conventional-changelog/commitlint/tree/master/%40commitlint/config-conventional

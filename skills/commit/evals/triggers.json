@@ -1,0 +1,22 @@
+[
+  {
+    "query": "지금까지 바꾼 거 커밋해 줘",
+    "expect": "commit"
+  },
+  {
+    "query": "커밋 메시지 뭐라고 쓰면 좋을까",
+    "expect": "commit"
+  },
+  {
+    "query": "git 에서 방금 커밋 취소하는 방법",
+    "expect": null
+  },
+  {
+    "query": "변경 사항 정리해서 커밋 올려 줘",
+    "expect": "commit"
+  },
+  {
+    "query": "git rebase 하다가 충돌 났는데 어떻게 해",
+    "expect": null
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "results": [
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-26",
+      "think": false,
+      "runs": 5,
+      "mode": "trigger",
+      "passed": 5,
+      "total": 5,
+      "failures": []
+    },
+    {
+      "model": "qwen3.5:9b",
+      "api": "ollama",
+      "date": "2026-09-26",
+      "think": false,
+      "runs": 5,
+      "mode": "trigger",
+      "passed": 5,
+      "total": 5,
+      "failures": [],
+      "skill_sha": "e72e37eb0de4"
+    }
+  ]
+}
