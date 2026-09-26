@@ -43,19 +43,17 @@
           "skills_read": [
             "grafana-dashboard"
           ],
-          "checks_passed": 3,
+          "checks_passed": 5,
           "checks_total": 9,
           "failed_checks": [
             "스킬 gitops-change 을 켰다",
-            "명령 /git push/ 을 실행했다",
             "명령 /argo_wait|get app/ 을 실행했다",
-            "사용자에게 묻지 않았다",
-            "h=$(git -C ~/gitops ls-remote origin refs/heads/main | cut -c1-40) && [ \"$h\" != \"$(git -C ~/gitops rev-list --max-parents=0 HEAD)\" ]",
-            "kubectl -n monitoring get deploy grafana -o jsonpath='{.spec.template.spec.containers[0].env}' | grep -q 'Asia/Seoul'"
+            "kubectl -n monitoring get deploy grafana -o jsonpath='{.spec.template.spec.containers[0].env}' | grep -q 'Asia/Seoul'",
+            "h=$(git -C ~/gitops ls-remote origin refs/heads/main | cut -c1-40) && kubectl -n argocd get app monitoring -o jsonpath='{.status.sync.revision} {.status.sync.status} {.status.health.status}' | grep -q \"^$h Synced Healthy\""
           ]
         }
       ],
-      "skill_sha": "a36aa9c9a178"
+      "skill_sha": "0b59221167fa"
     },
     {
       "model": "qwen3.5:9b",
@@ -80,7 +78,7 @@
           ]
         }
       ],
-      "skill_sha": "a36aa9c9a178"
+      "skill_sha": "0b59221167fa"
     },
     {
       "model": "gemma4:e4b",

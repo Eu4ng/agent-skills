@@ -6,11 +6,14 @@ description: Home Assistant 의 기기·엔티티·영역·통합 설정을 바�
 # Home Assistant 운영
 
 사용자는 UI 로 하나씩 누르는 안내보다 한 번에 끝나는 스크립트를 원한다. HA 설정은 WebSocket·REST API 로 바꾸고,
-같은 종류의 대상은 전부 한 번에 처리한다. 토큰은 사용자에게 묻지 않고 시크릿에서 꺼낸다.
+같은 종류의 대상은 전부 한 번에 처리한다. 토큰은 사용자에게 묻지 않는다. 스크립트가 시크릿에서 직접 읽는다.
 아래 `scripts/` 경로는 이 스킬 폴더 기준이다.
 
 HA 의 배포 설정(자원 한도, 이미지, 볼륨, 네트워크)을 바꾸는 일이면 이 스킬의 절차 대신 GitOps 변경 절차를 따른다.
-저장소를 고치고, 렌더링·서버 dry-run 을 하고, push 한 뒤, 동기화를 기다리고, 실제 동작을 확인한다.
+GitOps 변경을 다루는 스킬이 있으면 먼저 켠다.
+저장소를 고쳐 커밋·push 한 뒤, 동기화 도구의 앱 리비전이 push 한 커밋 SHA 와 같고 Synced·Healthy 가 될 때까지 기다린다
+(예: `<kubectl 실행 명령> -n argocd get app <앱> -o jsonpath='{.status.sync.revision} {.status.sync.status} {.status.health.status}'`
+을 반복). 그 전에 본 롤아웃·로그는 옛 배포다. 그다음 배포된 리소스에 새 값이 들어갔는지 확인한다.
 
 ## 환경 정보
 
@@ -25,6 +28,9 @@ HA 의 배포 설정(자원 한도, 이미지, 볼륨, 네트워크)을 바꾸�
 
 ## 빠른 절차
 
+진단이나 계획만 보고하고 멈추지 않는다. 삭제처럼 확인이 필요한 작업이 아니면 고치기·배포·검증까지 이어서 하고, 끝난 뒤
+한 번에 보고한다.
+
 1. **환경 정보를 읽는다.** `cat ~/.agents/environment.md` 를 실행해 읽는다(있는지 사용자에게 묻지 않는다). 경로는 홈 폴더 아래 `.agents` 폴더 안이다. 읽기에 실패하면 경로를 다시 확인하고 `ls -a ~/.agents` 로 찾는다.
    그 파일에서 대상 HA(네임스페이스·배포), 토큰 시크릿 위치, kubectl 실행 명령을 확인한다. 여러 HA(지역별, 중앙)가 있으면 어느 인스턴스를 바꿀지 정한다. 토큰이 있는지
    사용자에게 묻지 않는다.
@@ -38,7 +44,9 @@ HA 의 배포 설정(자원 한도, 이미지, 볼륨, 네트워크)을 바꾸�
 
    `--kubectl` 에는 환경 정보의 kubectl 실행 명령을 그대로 넣는다(예: `--kubectl "ssh cp kubectl"`).
    `--device` 는 그 기기와 기기에 속한 엔티티 ID 를 모두 낸다(`devices[].entities[].entity_id`). 기기 이름을 바꿀 때는
-   이 목록의 엔티티를 모두 바꾼다. 다른 목록은 `--list <종류> --filter <키>=<값>` 으로 보고, 결과는 `list.items` 에 있다.
+   이 목록의 엔티티를 모두 바꾼다. 엔티티 ID 는 영문 소문자·숫자·밑줄만 쓴다. 기기 이름의 `-`·공백은 `_` 로 바꾸고
+   기존 접미사는 유지한다(예: 기기 `Kitchen Sensor` 를 `kitchen-th` 로 바꾸면 `sensor.kitchen_sensor` 는
+   `sensor.kitchen_th`, `sensor.kitchen_sensor_battery` 는 `sensor.kitchen_th_battery`). 다른 목록은 `--list <종류> --filter <키>=<값>` 으로 보고, 결과는 `list.items` 에 있다.
 
    네임스페이스·배포·토큰 시크릿이 기본값(`home-assistant`, `home-assistant/ha-api-token:token`)과 다르면
    `--namespace`·`--deploy`·`--token-secret` 을 붙인다.
