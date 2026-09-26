@@ -1,0 +1,23 @@
+{
+  "skill_name": "grafana-dashboard",
+  "evals": [
+    {
+      "id": "no-data",
+      "prompt": "home-records 대시보드에서 습도 패널이 No data 로 나와. 이 환경에서는 명령을 직접 실행할 수 없으니, 무엇을 어떤 명령으로 확인하고 어떻게 고칠지 구체적으로 알려 줘.",
+      "expected_output": "시크릿에서 관리자 자격 증명을 꺼내 panel_check.py 로 전체 패널을 먼저 검사하고, 원본 JSON 을 고쳐 배포한 뒤 --wait-contains 로 다시 검사하는 순서를 제시한다. 비밀번호를 사용자에게 묻지 않는다.",
+      "home_files": {
+        ".agents/environment.md": "fixtures/environment.md"
+      },
+      "expect_skill": "grafana-dashboard",
+      "expect_ask": false,
+      "expect_final": [
+        "panel_check",
+        "grafana-admin"
+      ],
+      "reject_final": [
+        "비밀번호를 알려|비밀번호가 필요|password.*알려"
+      ],
+      "checks": []
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "results": [
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-27",
+      "think": false,
+      "activation": "tool",
+      "mode": "run",
+      "passed": 0,
+      "total": 1,
+      "cases": [
+        {
+          "id": "no-data",
+          "pass": false,
+          "skills_read": [
+            "grafana-dashboard"
+          ],
+          "failed_checks": [
+            "답변에 /panel_check/ 이 있다",
+            "답변에 /grafana-admin/ 이 있다",
+            "사용자에게 묻지 않았다"
+          ]
+        }
+      ],
+      "skill_sha": "137089fba574"
+    },
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-27",
+      "think": true,
+      "activation": "tool",
+      "mode": "run",
+      "passed": 0,
+      "total": 1,
+      "cases": [
+        {
+          "id": "no-data",
+          "pass": false,
+          "skills_read": [
+            "grafana-dashboard"
+          ],
+          "failed_checks": [
+            "답변에 /panel_check/ 이 있다",
+            "답변에 /grafana-admin/ 이 있다",
+            "사용자에게 묻지 않았다"
+          ]
+        }
+      ],
+      "skill_sha": "137089fba574"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "api": "ollama",
+      "date": "2026-09-27",
+      "think": false,
+      "activation": "tool",
+      "mode": "run",
+      "passed": 0,
+      "total": 1,
+      "cases": [
+        {
+          "id": "no-data",
+          "pass": false,
+          "skills_read": [
+            "grafana-dashboard"
+          ],
+          "checks_passed": 2,
+          "checks_total": 5,
+          "failed_checks": [
+            "답변에 /panel_check/ 이 있다",
+            "답변에 /grafana-admin/ 이 있다",
+            "사용자에게 묻지 않았다"
+          ]
+        }
+      ],
+      "skill_sha": "137089fba574"
+    },
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-27",
+      "think": false,
+      "runs": 5,
+      "mode": "trigger",
+      "passed": 5,
+      "total": 5,
+      "failures": [],
+      "skill_sha": "39d538ad756f"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "api": "ollama",
+      "date": "2026-09-27",
+      "think": false,
+      "runs": 5,
+      "mode": "trigger",
+      "passed": 5,
+      "total": 5,
+      "failures": [],
+      "skill_sha": "137089fba574"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "query": "IoT 대시보드에서 습도 그래프가 No data 로 나와",
+    "expect": "grafana-dashboard"
+  },
+  {
+    "query": "그라파나에 문 열림 센서 상태를 막대로 보이게 해 줘",
+    "expect": "grafana-dashboard"
+  },
+  {
+    "query": "대시보드 패널 제목 한글로 바꾸고 배포까지 해 줘",
+    "expect": "grafana-dashboard"
+  },
+  {
+    "query": "readings 테이블에 unit 컬럼 추가하는 마이그레이션 써 줘",
+    "expect": null
+  },
+  {
+    "query": "telegraf 가 mqtt 에서 값을 못 받아와",
+    "expect": null
+  }
+]
