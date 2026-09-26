@@ -111,3 +111,24 @@ def test_saved_selection_is_used_instead_of_all_values() -> None:
     fetch = fake_fetch(dashboard, {"SELECT DISTINCT site": ["a", "b"]})
     variables, _ = pc.resolve_variables(fetch, dashboard, DS, ("now-1h", "now"), {})
     assert variables["site"]["values"] == ["b"]
+
+
+def test_kubectl_argv_ssh_keeps_prefix_for_remote_shell() -> None:
+    argv = pc.kubectl_argv(
+        "ssh ubuntu@hub kubectl --kubeconfig ~/edge.yaml",
+        ["get", "secret", "-o", "jsonpath={.data.a b}"],
+    )
+    assert argv == [
+        "ssh",
+        "ubuntu@hub",
+        "kubectl --kubeconfig ~/edge.yaml get secret -o 'jsonpath={.data.a b}'",
+    ]
+    assert pc.kubectl_argv("kubectl", ["get", "x"]) == ["kubectl", "get", "x"]
+
+
+def test_kubectl_argv_accepts_quoted_remote_command() -> None:
+    assert pc.kubectl_argv("ssh cp 'kubectl -n monitoring'", ["get", "x"]) == [
+        "ssh",
+        "cp",
+        "kubectl -n monitoring get x",
+    ]

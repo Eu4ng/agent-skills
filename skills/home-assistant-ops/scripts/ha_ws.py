@@ -62,8 +62,40 @@ def summarize(
     }
 
 
+def device_view(devices: list[dict], entities: list[dict], name: str) -> list[dict]:
+    """이름(사용자 이름 또는 원래 이름, 대소문자 무시)이 같은 기기와 그 기기에 속한 엔티티를 모은다."""
+    wanted = name.casefold()
+    return [
+        {
+            "id": d.get("id"),
+            "name": d.get("name"),
+            "name_by_user": d.get("name_by_user"),
+            "area_id": d.get("area_id"),
+            "entities": [
+                {
+                    k: e.get(k)
+                    for k in ("entity_id", "name", "original_name", "disabled_by")
+                }
+                for e in entities
+                if e.get("device_id") == d.get("id")
+            ],
+        }
+        for d in devices
+        if wanted
+        in {
+            str(d.get("name_by_user") or "").casefold(),
+            str(d.get("name") or "").casefold(),
+        }
+    ]
+
+
 async def run(
-    url: str, token: str, calls: list[dict], summary: bool, dry_run: bool
+    url: str,
+    token: str,
+    calls: list[dict],
+    summary: bool,
+    dry_run: bool,
+    device: str | None = None,
 ) -> tuple[int, dict]:
     import aiohttp  # HA 컨테이너 안에는 있다
 
@@ -99,6 +131,14 @@ async def run(
             results["summary"] = summarize(
                 lists["entities"], lists["devices"], lists["areas"]
             )
+        if device:
+            lists = {
+                k: (await call({"type": LISTS[k]})).get("result") or []
+                for k in ("devices", "entities")
+            }
+            results["devices"] = device_view(
+                lists["devices"], lists["entities"], device
+            )
         failed = False
         for payload in calls:
             if dry_run and payload.get("type") not in READ_ONLY:
@@ -116,11 +156,16 @@ def kubectl_argv(prefix: str, args: list[str]) -> list[str]:
     """kubectl 실행 명령에 인자를 붙인다. 'ssh <호스트> kubectl' 처럼 ssh 를 거치면 원격 부분을 한 문자열로 묶는다."""
     tokens = shlex.split(prefix)
     if tokens and tokens[0] == "ssh":
+        # "ssh cp 'kubectl -n x'" 처럼 원격 명령을 따옴표로 묶어 넘겨도 같은 뜻으로 푼다
+        tokens = [
+            part for t in tokens for part in (shlex.split(t) if " " in t else [t])
+        ]
         cut = next(
             (i for i, t in enumerate(tokens) if t.endswith(("kubectl", "k3s"))),
             len(tokens),
         )
-        return tokens[:cut] + [shlex.join(tokens[cut:] + args)]
+        # 사용자가 쓴 앞부분(예: --kubeconfig ~/edge.yaml)은 원격 셸이 풀도록 그대로 두고, 붙이는 인자만 따옴표로 감싼다
+        return tokens[:cut] + [" ".join([*tokens[cut:], shlex.join(args)])]
     return tokens + args
 
 
@@ -183,11 +228,13 @@ def build_parser() -> argparse.ArgumentParser:
             "예:\n"
             '  python3 ha_ws.py --kubectl "ssh cp kubectl" --summary   # 작업 PC 에서 (권장)\n'
             "  ... python3 - --summary < ha_ws.py                      # 파드 안에서\n"
+            '  python3 ha_ws.py --kubectl "ssh cp kubectl" --device "Outside Temperature"   # 기기와 그 엔티티\n'
             "  ... python3 - --list entities --filter platform=mqtt < ha_ws.py\n"
             '  ... python3 - --dry-run --call \'{"type":"config/entity_registry/update","entity_id":"sensor.x",'
             '"new_entity_id":"sensor.y"}\' < ha_ws.py\n\n'
             "--list: entities, devices, areas, entries, states\n"
-            '출력: {"summary"?, "list"?, "calls": [{request, sent, success, result, error}]}\n'
+            '출력: {"summary"?, "devices"?: [{id, name, name_by_user, area_id, entities: [{entity_id, ...}]}],\n'
+            '       "list"?: {"count", "items"}, "calls": [{request, sent, success, result, error}]}\n'
             "--dry-run 이면 조회가 아닌 호출은 보내지 않고 request 만 보여 준다.\n"
             "exit code: 0 성공, 1 실패한 호출 있음, 2 사용법 오류(aiohttp·토큰 없음 포함), 3 인증 실패"
         ),
@@ -227,6 +274,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--list", choices=sorted(LISTS), help="레지스트리·상태 목록을 낸다"
+    )
+    parser.add_argument(
+        "--device",
+        metavar="NAME",
+        help="이름이 같은 기기와 그 기기에 속한 엔티티를 낸다",
     )
     parser.add_argument(
         "--filter",
@@ -271,8 +323,11 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_USAGE
     if args.list:
         calls.insert(0, {"type": LISTS[args.list]})
-    if not calls and not args.summary:
-        print("오류: --summary, --list, --call 중 하나가 필요하다", file=sys.stderr)
+    if not calls and not args.summary and not args.device:
+        print(
+            "오류: --summary, --device, --list, --call 중 하나가 필요하다",
+            file=sys.stderr,
+        )
         return EXIT_USAGE
     try:
         import aiohttp  # noqa: F401
@@ -282,7 +337,9 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return EXIT_USAGE
-    code, results = asyncio.run(run(args.url, token, calls, args.summary, args.dry_run))
+    code, results = asyncio.run(
+        run(args.url, token, calls, args.summary, args.dry_run, args.device)
+    )
     if args.list and results.get("calls"):
         items = results["calls"].pop(0).get("result") or []
         for key, _, value in (f.partition("=") for f in args.filter):

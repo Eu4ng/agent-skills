@@ -25,11 +25,16 @@ def kubectl_argv(prefix: str, args: list[str]) -> list[str]:
     """kubectl 실행 명령에 인자를 붙인다. 'ssh <호스트> kubectl' 처럼 ssh 를 거치면 원격 부분을 한 문자열로 묶는다."""
     tokens = shlex.split(prefix)
     if tokens and tokens[0] == "ssh":
+        # "ssh cp 'kubectl -n x'" 처럼 원격 명령을 따옴표로 묶어 넘겨도 같은 뜻으로 푼다
+        tokens = [
+            part for t in tokens for part in (shlex.split(t) if " " in t else [t])
+        ]
         cut = next(
             (i for i, t in enumerate(tokens) if t.endswith(("kubectl", "k3s"))),
             len(tokens),
         )
-        return tokens[:cut] + [shlex.join(tokens[cut:] + args)]
+        # 사용자가 쓴 앞부분(예: --kubeconfig ~/edge.yaml)은 원격 셸이 풀도록 그대로 두고, 붙이는 인자만 따옴표로 감싼다
+        return tokens[:cut] + [" ".join([*tokens[cut:], shlex.join(args)])]
     return tokens + args
 
 

@@ -18,23 +18,27 @@ HA 의 배포 설정(자원 한도, 이미지, 볼륨, 네트워크)을 바꾸�
 
 - `## 서비스`: HA 인스턴스 목록, 네임스페이스·배포 이름, 운영 스크립트와 이름 규칙 문서 위치
 - `## 시크릿 위치`: HA 장기 액세스 토큰
-- `## 클러스터`: kubectl 실행 위치
+- `## 클러스터`: kubectl 실행 명령
 
 파일이 없거나 항목이 비어 있으면 먼저 접근 가능한 곳(설정 파일, 서버, 저장소)을 조사하고, 그래도 모르는 것만
 사용자에게 묻는다. 알아낸 값은 그 파일의 해당 절에 적은 뒤 진행한다. 비밀값 자체는 적지 않는다.
 
 ## 빠른 절차
 
-1. **환경 정보를 읽는다.** `~/.agents/environment.md` 를 직접 열어 읽는다(있는지 사용자에게 묻지 않는다). 그 파일에서 대상 HA(네임스페이스·배포), 토큰 시크릿 위치,
-   kubectl 실행 위치를 확인한다. 여러 HA(지역별, 중앙)가 있으면 어느 인스턴스를 바꿀지 정한다. 토큰이 있는지
+1. **환경 정보를 읽는다.** `cat ~/.agents/environment.md` 를 실행해 읽는다(있는지 사용자에게 묻지 않는다). 경로는 홈 폴더 아래 `.agents` 폴더 안이다. 읽기에 실패하면 경로를 다시 확인하고 `ls -a ~/.agents` 로 찾는다.
+   그 파일에서 대상 HA(네임스페이스·배포), 토큰 시크릿 위치, kubectl 실행 명령을 확인한다. 여러 HA(지역별, 중앙)가 있으면 어느 인스턴스를 바꿀지 정한다. 토큰이 있는지
    사용자에게 묻지 않는다.
 2. **현재 상태를 본다.** 작업 PC 에서 아래 명령을 그대로 실행한다. 스크립트가 토큰을 시크릿에서 읽어 HA 파드 안에서
    실행하므로 토큰을 직접 꺼낼 필요가 없다. 토큰을 출력하거나 명령에 붙여 넣지 않는다.
 
    ```bash
    python3 <이 스킬 폴더>/scripts/ha_ws.py --kubectl "<kubectl 실행 명령>" --summary
-   python3 <이 스킬 폴더>/scripts/ha_ws.py --kubectl "<kubectl 실행 명령>" --list devices --filter name=<기기 이름>
+   python3 <이 스킬 폴더>/scripts/ha_ws.py --kubectl "<kubectl 실행 명령>" --device "<기기 이름>"
    ```
+
+   `--kubectl` 에는 환경 정보의 kubectl 실행 명령을 그대로 넣는다(예: `--kubectl "ssh cp kubectl"`).
+   `--device` 는 그 기기와 기기에 속한 엔티티 ID 를 모두 낸다(`devices[].entities[].entity_id`). 기기 이름을 바꿀 때는
+   이 목록의 엔티티를 모두 바꾼다. 다른 목록은 `--list <종류> --filter <키>=<값>` 으로 보고, 결과는 `list.items` 에 있다.
 
    네임스페이스·배포·토큰 시크릿이 기본값(`home-assistant`, `home-assistant/ha-api-token:token`)과 다르면
    `--namespace`·`--deploy`·`--token-secret` 을 붙인다.
@@ -46,10 +50,11 @@ HA 의 배포 설정(자원 한도, 이미지, 볼륨, 네트워크)을 바꾸�
      --call '{"type":"config/entity_registry/update","entity_id":"sensor.old","new_entity_id":"sensor.new"}'
    ```
 
-4. **실행한다.** `--dry-run` 을 빼고 같은 명령을 실행한다. 엔티티가 여러 개면 하나씩 모두 실행한다.
+4. **실행한다.** `--dry-run` 을 빼고 같은 명령을 실행한다. 바꿀 것이 여러 개면 `--call` 을 여러 번 붙여 한 번에 보낸다
+   (기기 이름은 `config/device_registry/update` 의 `name_by_user`).
 5. **검증**:
    - 같은 dry-run 을 다시 실행해 할 일이 남지 않았는지 확인한다.
-   - `--summary`·`--list` 로 결과를 확인한다.
+   - `--device "<새 이름>"`·`--summary`·`--list` 로 결과를 확인한다.
    - 데이터가 흘러가는 곳(MQTT, DB)이 있으면 새 이름·값으로 들어오는지 본다.
 
    통과하기 전에는 끝났다고 보고하지 않는다.
@@ -91,7 +96,7 @@ HA 의 배포 설정(자원 한도, 이미지, 볼륨, 네트워크)을 바꾸�
 ## 스크립트
 
 - `scripts/ha_ws.py`: WebSocket API 호출기. `--summary`(엔티티·기기·영역 수, 비활성 이유별 수, 영역 없는 기기),
-  `--list`, `--call '<JSON>'`, `--dry-run` 을 지원한다. 작업 PC 에서 `--kubectl "<kubectl 실행 명령>"` 으로 부르면
+  `--device <이름>`(기기와 그 엔티티), `--list`, `--call '<JSON>'`, `--dry-run` 을 지원한다. 작업 PC 에서 `--kubectl "<kubectl 실행 명령>"` 으로 부르면
   토큰 시크릿을 읽어 HA 파드 안에서 실행한다. `--help` 참고.
 
 ## 하지 않는 것

@@ -30,10 +30,12 @@
 
 ## 클러스터
 
-| 클러스터 | kubectl 실행 위치 | 비고 |
+| 클러스터 | kubectl 실행 명령 | 비고 |
 | :--- | :--- | :--- |
-| <hub> | <ssh user@IP 에서 kubectl> | <GitOps 저장소 경로, 직접 apply 금지 여부> |
-| <edge> | <ssh user@IP 에서 kubectl --kubeconfig ~/edge.yaml> | <사이트 이름> |
+| <hub> | <`ssh user@IP kubectl` 또는 `kubectl`> | <GitOps 저장소 경로, 직접 apply 금지 여부> |
+| <edge> | <`ssh user@IP kubectl --kubeconfig /home/user/edge.yaml` (원격 경로는 절대 경로로. `~` 는 이 PC 에서 먼저 풀린다)> | <사이트 이름> |
+
+명령 뒤에 kubectl 인자를 붙여 쓴다(예: `ssh user@IP kubectl get pods`). 스크립트의 `--kubectl` 옵션에는 이 명령을 그대로 넣는다.
 
 ## 서비스
 

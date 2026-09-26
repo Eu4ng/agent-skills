@@ -12,13 +12,14 @@ description: Argo CD 같은 GitOps 도구가 관리하는 쿠버네티스 클러
 
 ## 환경 정보
 
-`~/.agents/environment.md` 의 `## 클러스터`(kubectl 실행 위치, GitOps 저장소), `## 저장소`, `## 시크릿 위치`,
+`~/.agents/environment.md` 의 `## 클러스터`(kubectl 실행 명령, GitOps 저장소), `## 저장소`, `## 시크릿 위치`,
 `## 작업 정책` 절을 읽는다. 파일이 없거나 항목이 비어 있으면 먼저 접근 가능한 곳(설정 파일, 서버, 저장소)을 조사하고,
 그래도 모르는 것만 사용자에게 묻는다. 알아낸 값은 그 파일의 해당 절에 적은 뒤 진행한다. 비밀값 자체는 적지 않는다.
 
 ## 빠른 절차
 
-1. **환경 정보를 읽는다.** `~/.agents/environment.md` 를 직접 열어 읽는다(있는지 사용자에게 묻지 않는다). 그 파일에서 kubectl 실행 명령(예: `ssh cp kubectl`), GitOps 저장소, 시크릿 위치를 확인한다.
+1. **환경 정보를 읽는다.** `cat ~/.agents/environment.md` 를 실행해 읽는다(있는지 사용자에게 묻지 않는다). 경로는 홈 폴더 아래 `.agents` 폴더 안이다. 읽기에 실패하면 경로를 다시 확인하고 `ls -a ~/.agents` 로 찾는다.
+   그 파일에서 kubectl 실행 명령(예: `ssh cp kubectl`), GitOps 저장소, 시크릿 위치를 확인한다.
 2. **저장소 규칙을 읽는다.** 대상 GitOps 저장소의 AGENTS.md·README 에서 폴더 구조(폴더 = 앱 = 네임스페이스 등),
    커밋 규칙, 관련 문서 위치를 확인한다.
 3. **저장소를 고친다.** 클러스터를 직접 고치지 않는다. 같은 종류의 설정이 여러 곳에 있으면(여러 사이트 오버레이,
@@ -38,8 +39,12 @@ description: Argo CD 같은 GitOps 도구가 관리하는 쿠버네티스 클러
    끝났다고 보고하지 않는다.**
 
    ```bash
-   python3 <이 스킬 폴더>/scripts/argo_wait.py <앱 이름> --revision <커밋 SHA> --refresh --kubectl "<kubectl 실행 명령>"
+   python3 <이 스킬 폴더>/scripts/argo_wait.py <앱 이름> --revision <커밋 SHA> --refresh --timeout 100 \
+     --kubectl "<kubectl 실행 명령>"
    ```
+
+   `ready` 가 `false` 로 끝나면(시간 초과 포함) 같은 명령을 다시 실행한다. 사용자에게 기다려 달라고 넘기지 않는다.
+   `--kubectl` 에는 환경 정보의 kubectl 실행 명령을 따옴표 없이 그대로 넣는다(예: `--kubectl "ssh cp kubectl"`).
 
    새 폴더를 더해 앱이 새로 생기는 경우에는 `--appset <ApplicationSet 이름>` 을 붙인다. 앱이 생길 때까지 몇 분 걸릴 수 있다.
 7. **실제 동작을 확인한다.** 다음을 모두 확인한다.

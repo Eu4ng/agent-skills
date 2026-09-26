@@ -16,10 +16,12 @@
 
 ## 클러스터
 
-| 클러스터 | kubectl 실행 위치 | 비고 |
+| 클러스터 | kubectl 실행 명령 | 비고 |
 | :--- | :--- | :--- |
-| 허브 | `ssh admin@192.0.2.10 'kubectl ...'` | Argo CD 가 `~/src/gitops` 를 selfHeal+prune 으로 동기화. 폴더 `services/<이름>/` = 앱 = 네임스페이스 |
-| 엣지 | `ssh admin@192.0.2.10 'kubectl --kubeconfig ~/edge.yaml ...'` | 허브 Argo CD 가 `sites/edge/` 를 동기화 |
+| 허브 | `ssh admin@192.0.2.10 kubectl` | Argo CD 가 `~/src/gitops` 를 selfHeal+prune 으로 동기화. 폴더 `services/<이름>/` = 앱 = 네임스페이스 |
+| 엣지 | `ssh admin@192.0.2.10 kubectl --kubeconfig /home/admin/edge.yaml` | 허브 Argo CD 가 `sites/edge/` 를 동기화 |
+
+명령 뒤에 kubectl 인자를 붙여 쓴다(예: `ssh admin@192.0.2.10 kubectl get pods`). 스크립트의 `--kubectl` 옵션에는 이 명령을 그대로 넣는다.
 
 ## 서비스
 
