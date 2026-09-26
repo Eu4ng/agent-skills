@@ -3,18 +3,19 @@
     {
       "model": "gemma4:e4b",
       "api": "ollama",
-      "date": "2026-09-26",
+      "date": "2026-09-27",
       "think": false,
       "runs": 5,
       "mode": "trigger",
       "passed": 5,
       "total": 5,
-      "failures": []
+      "failures": [],
+      "skill_sha": "e72e37eb0de4"
     },
     {
       "model": "qwen3.5:9b",
       "api": "ollama",
-      "date": "2026-09-26",
+      "date": "2026-09-27",
       "think": false,
       "runs": 5,
       "mode": "trigger",

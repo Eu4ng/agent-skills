@@ -13,7 +13,7 @@
   },
   {
     "query": "k8s 클러스터에 새 서비스 배포 매니페스트 써 줘",
-    "expect": null
+    "expect": "gitops-change"
   },
   {
     "query": "ssh 키 새로 만드는 방법 블로그 글로 써 줘",

@@ -3,7 +3,7 @@
     {
       "model": "gemma4:e4b",
       "api": "ollama",
-      "date": "2026-09-26",
+      "date": "2026-09-27",
       "think": false,
       "activation": "tool",
       "mode": "run",
@@ -17,17 +17,19 @@
             "skill-authoring"
           ],
           "failed_checks": [
+            "명령 /new_skill\\.py/ 을 실행했다",
+            "명령 /lint\\.py/ 을 실행했다",
             "ls skills/*/SKILL.md",
             "python3 \"$EVAL_SKILLS_DIR/skill-authoring/scripts/lint.py\" skills/* | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d); sys.exit(1 if d[\"errors\"] or d[\"warnings\"] else 0)'"
           ]
         }
       ],
-      "skill_sha": "10dacf20a01c"
+      "skill_sha": "8ed29cddfec8"
     },
     {
       "model": "gemma4:e4b",
       "api": "ollama",
-      "date": "2026-09-26",
+      "date": "2026-09-27",
       "think": true,
       "activation": "tool",
       "mode": "run",
@@ -41,16 +43,17 @@
             "skill-authoring"
           ],
           "failed_checks": [
-            "python3 \"$EVAL_SKILLS_DIR/skill-authoring/scripts/lint.py\" skills/* | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d); sys.exit(1 if d[\"errors\"] or d[\"warnings\"] else 0)'"
+            "명령 /new_skill\\.py/ 을 실행했다",
+            "명령 /lint\\.py/ 을 실행했다"
           ]
         }
       ],
-      "skill_sha": "10dacf20a01c"
+      "skill_sha": "8ed29cddfec8"
     },
     {
       "model": "qwen3.5:9b",
       "api": "ollama",
-      "date": "2026-09-26",
+      "date": "2026-09-27",
       "think": false,
       "activation": "tool",
       "mode": "run",
@@ -65,35 +68,25 @@
           ],
           "failed_checks": []
         }
-      ]
+      ],
+      "skill_sha": "8ed29cddfec8"
     },
     {
       "model": "gemma4:e4b",
       "api": "ollama",
-      "date": "2026-09-26",
+      "date": "2026-09-27",
       "think": false,
       "runs": 5,
       "mode": "trigger",
-      "passed": 7,
+      "passed": 8,
       "total": 8,
-      "failures": [
-        {
-          "query": "AGENTS.md 에 이 저장소는 develop 브랜치로 작업한다고 적어 줘",
-          "expect": "none",
-          "picks": [
-            "skill-authoring",
-            "skill-authoring",
-            "skill-authoring",
-            "none",
-            "skill-authoring"
-          ]
-        }
-      ]
+      "failures": [],
+      "skill_sha": "0139be902ff0"
     },
     {
       "model": "qwen3.5:9b",
       "api": "ollama",
-      "date": "2026-09-26",
+      "date": "2026-09-27",
       "think": false,
       "runs": 5,
       "mode": "trigger",
@@ -104,15 +97,15 @@
           "query": "지난번에 내가 몇 번이나 지적한 실수들 있잖아, 그거 다시 안 하게 규칙으로 정리해서 남겨 둬",
           "expect": "skill-authoring",
           "picks": [
-            "skill-authoring",
-            "skill-authoring",
+            "none",
+            "none",
             "none",
             "none",
             "none"
           ]
         }
       ],
-      "skill_sha": "10dacf20a01c"
+      "skill_sha": "0139be902ff0"
     }
   ]
 }
