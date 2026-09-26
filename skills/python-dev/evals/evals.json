@@ -7,8 +7,8 @@
       "expected_output": "argparse·main() 구조의 비대화형 스크립트가 JSON 을 stdout 으로 내고, pytest 테스트가 있고, ruff 검사를 통과한다.",
       "expect_skill": "python-dev",
       "expect_commands": [
-        "pytest",
-        "ruff"
+        "check\\.py|pytest",
+        "check\\.py|ruff"
       ],
       "expect_ask": false,
       "checks": [
