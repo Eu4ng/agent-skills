@@ -1,0 +1,42 @@
+[
+  {
+    "query": "HA 엔티티 이름 일괄로 바꾸는 스크립트 하나 짜 줘",
+    "expect": "python-dev"
+  },
+  {
+    "query": "ha-registry.py 에 --dry-run 옵션 추가하고 테스트도 만들어 줘",
+    "expect": "python-dev"
+  },
+  {
+    "query": "pyproject.toml 에 pytest 설정 넣고 테스트 폴더 구조 잡아 줘",
+    "expect": "python-dev"
+  },
+  {
+    "query": "로그 파일에서 에러 줄만 세는 명령어 뭐야? 한 줄로",
+    "expect": null
+  },
+  {
+    "query": "Grafana 대시보드 JSON 에서 패널 제목만 바꿔 줘",
+    "expect": null
+  },
+  {
+    "query": "이 bash 스크립트 set -euo pipefail 넣어서 고쳐 줘",
+    "expect": null
+  },
+  {
+    "query": "CSV 두 개 합쳐서 중복 행 빼는 거 파이썬으로 만들어 줘",
+    "expect": "python-dev"
+  },
+  {
+    "query": "이 스크립트 실행하면 비밀번호 입력하라고 멈추는데 에이전트가 돌릴 수 있게 고쳐 줘 (sync.py)",
+    "expect": "python-dev"
+  },
+  {
+    "query": "helm values.yaml 에서 replica 3 으로 바꿔 줘",
+    "expect": null
+  },
+  {
+    "query": "docker compose 파일에 볼륨 하나 추가해 줘",
+    "expect": null
+  }
+]

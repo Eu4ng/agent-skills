@@ -1,0 +1,25 @@
+{
+  "skill_name": "python-dev",
+  "evals": [
+    {
+      "id": "count-errors",
+      "prompt": "폴더 안의 .log 파일들에서 ERROR 가 들어간 줄 수를 파일별로 세서 JSON 으로 출력하는 파이썬 스크립트 count_errors.py 를 작업 폴더에 만들어 줘. 테스트도 같이.",
+      "expected_output": "argparse·main() 구조의 비대화형 스크립트가 JSON 을 stdout 으로 내고, pytest 테스트가 있고, ruff 검사를 통과한다.",
+      "expect_skill": "python-dev",
+      "expect_commands": [
+        "pytest",
+        "ruff"
+      ],
+      "expect_ask": false,
+      "checks": [
+        "test -f count_errors.py && ls test_*.py tests/test_*.py 2>/dev/null | grep -q .",
+        "grep -q argparse count_errors.py && grep -q 'def main' count_errors.py",
+        "! grep -nE 'input\\(|getpass' count_errors.py",
+        "python3 count_errors.py --help",
+        "rm -rf _fx && mkdir _fx && printf 'ERROR a\\nok\\nERROR b\\n' > _fx/a.log && printf 'fine\\n' > _fx/b.log && python3 count_errors.py _fx | python3 -c 'import json,sys; s=json.dumps(json.load(sys.stdin)); print(s); sys.exit(0 if \"2\" in s else 1)'",
+        "uvx ruff check count_errors.py",
+        "uvx pytest -q -p no:cacheprovider"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "results": [
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-26",
+      "think": false,
+      "activation": "tool",
+      "mode": "run",
+      "passed": 0,
+      "total": 1,
+      "cases": [
+        {
+          "id": "count-errors",
+          "pass": false,
+          "skills_read": [
+            "python-dev"
+          ],
+          "failed_checks": [
+            "rm -rf _fx && mkdir _fx && printf 'ERROR a\\nok\\nERROR b\\n' > _fx/a.log && printf 'fine\\n' > _fx/b.log && python3 count_errors.py _fx | python3 -c 'import json,sys; s=json.dumps(json.load(sys.stdin)); print(s); sys.exit(0 if \"2\" in s else 1)'",
+            "uvx ruff check count_errors.py",
+            "uvx pytest -q -p no:cacheprovider"
+          ]
+        }
+      ],
+      "skill_sha": "bc72790088d7"
+    },
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-26",
+      "think": true,
+      "activation": "tool",
+      "mode": "run",
+      "passed": 0,
+      "total": 1,
+      "cases": [
+        {
+          "id": "count-errors",
+          "pass": false,
+          "skills_read": [
+            "python-dev"
+          ],
+          "failed_checks": [
+            "grep -q argparse count_errors.py && grep -q 'def main' count_errors.py",
+            "rm -rf _fx && mkdir _fx && printf 'ERROR a\\nok\\nERROR b\\n' > _fx/a.log && printf 'fine\\n' > _fx/b.log && python3 count_errors.py _fx | python3 -c 'import json,sys; s=json.dumps(json.load(sys.stdin)); print(s); sys.exit(0 if \"2\" in s else 1)'",
+            "uvx ruff check count_errors.py",
+            "uvx pytest -q -p no:cacheprovider"
+          ]
+        }
+      ],
+      "skill_sha": "db9d3fb8d485"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "api": "ollama",
+      "date": "2026-09-26",
+      "think": false,
+      "activation": "tool",
+      "mode": "run",
+      "passed": 0,
+      "total": 1,
+      "cases": [
+        {
+          "id": "count-errors",
+          "pass": false,
+          "skills_read": [
+            "python-dev"
+          ],
+          "failed_checks": [
+            "uvx ruff check count_errors.py",
+            "uvx pytest -q -p no:cacheprovider"
+          ]
+        }
+      ],
+      "skill_sha": "860215aadcc4"
+    },
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-26",
+      "think": false,
+      "runs": 5,
+      "mode": "trigger",
+      "passed": 10,
+      "total": 10,
+      "failures": []
+    },
+    {
+      "model": "qwen3.5:9b",
+      "api": "ollama",
+      "date": "2026-09-26",
+      "think": false,
+      "runs": 5,
+      "mode": "trigger",
+      "passed": 10,
+      "total": 10,
+      "failures": [],
+      "skill_sha": "860215aadcc4"
+    }
+  ]
+}
