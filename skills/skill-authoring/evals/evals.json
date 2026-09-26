@@ -1,0 +1,20 @@
+{
+  "skill_name": "skill-authoring",
+  "evals": [
+    {
+      "id": "release-skill",
+      "prompt": "릴리스할 때마다 CHANGELOG.md 갱신하고, 버전 태그 붙이고, 태그 push 하는 걸 자꾸 빼먹어. 이 절차를 여러 저장소에서 쓸 공용 스킬로 만들어 줘. 공용 스킬 저장소는 작업 폴더의 skills/ 폴더야. 커밋은 하지 마.",
+      "expected_output": "skills/<이름>/SKILL.md 가 표준 frontmatter 와 절차·검증 단계를 갖추고, 검사 스크립트를 오류·경고 없이 통과한다.",
+      "expect_skill": "skill-authoring",
+      "expect_commands": [
+        "new_skill\\.py",
+        "lint\\.py"
+      ],
+      "expect_ask": false,
+      "checks": [
+        "ls skills/*/SKILL.md",
+        "python3 \"$EVAL_SKILLS_DIR/skill-authoring/scripts/lint.py\" skills/* | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d); sys.exit(1 if d[\"errors\"] or d[\"warnings\"] else 0)'"
+      ]
+    }
+  ]
+}
