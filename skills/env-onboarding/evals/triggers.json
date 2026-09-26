@@ -1,0 +1,34 @@
+[
+  {
+    "query": "새 노트북에 세팅했어. 여기서도 서버 작업할 수 있게 준비해 줘",
+    "expect": "env-onboarding"
+  },
+  {
+    "query": "컨트롤플레인 서버 주소가 뭐였지? 여기선 모르겠네",
+    "expect": "env-onboarding"
+  },
+  {
+    "query": "서버 IP 바뀌었어. 환경 정보 갱신해 줘",
+    "expect": "env-onboarding"
+  },
+  {
+    "query": "k8s 클러스터에 새 서비스 배포 매니페스트 써 줘",
+    "expect": null
+  },
+  {
+    "query": "ssh 키 새로 만드는 방법 블로그 글로 써 줘",
+    "expect": null
+  },
+  {
+    "query": "이 파이썬 스크립트에서 환경 변수 읽는 부분 고쳐 줘",
+    "expect": "python-dev"
+  },
+  {
+    "query": "회사 PC 에서도 홈랩 서버 붙게 해 줘. 여긴 아무 설정도 없어",
+    "expect": "env-onboarding"
+  },
+  {
+    "query": "nginx 설정 파일 문법 검사해 줘",
+    "expect": null
+  }
+]

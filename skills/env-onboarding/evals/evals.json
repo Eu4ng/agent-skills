@@ -1,0 +1,18 @@
+{
+  "skill_name": "env-onboarding",
+  "evals": [
+    {
+      "id": "empty-home",
+      "prompt": "서버 목록이랑 쿠버네티스 어디서 돌리는지 알려줘.",
+      "expected_output": "환경 정보 파일이 없음을 알리고, 감지 스크립트를 실행한 뒤, 모르는 것만 한 번에 묻는다. 서버 정보를 지어내지 않는다.",
+      "expect_skill": "env-onboarding",
+      "expect_commands": [
+        "detect\\.py"
+      ],
+      "expect_ask": true,
+      "checks": [
+        "test ! -e home/.agents/environment.md || grep -q '확인 필요' home/.agents/environment.md"
+      ]
+    }
+  ]
+}

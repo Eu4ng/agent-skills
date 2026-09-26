@@ -1,0 +1,101 @@
+{
+  "results": [
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-26",
+      "think": false,
+      "activation": "tool",
+      "mode": "run",
+      "passed": 1,
+      "total": 1,
+      "cases": [
+        {
+          "id": "empty-home",
+          "pass": true,
+          "skills_read": [
+            "env-onboarding"
+          ],
+          "failed_checks": []
+        }
+      ],
+      "skill_sha": "c529ec21b0c5"
+    },
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-26",
+      "think": true,
+      "activation": "tool",
+      "mode": "run",
+      "passed": 1,
+      "total": 1,
+      "cases": [
+        {
+          "id": "empty-home",
+          "pass": true,
+          "skills_read": [
+            "env-onboarding"
+          ],
+          "failed_checks": []
+        }
+      ],
+      "skill_sha": "c529ec21b0c5"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "api": "ollama",
+      "date": "2026-09-26",
+      "think": false,
+      "activation": "tool",
+      "mode": "run",
+      "passed": 1,
+      "total": 1,
+      "cases": [
+        {
+          "id": "empty-home",
+          "pass": true,
+          "skills_read": [
+            "env-onboarding"
+          ],
+          "failed_checks": []
+        }
+      ]
+    },
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-26",
+      "think": false,
+      "runs": 5,
+      "mode": "trigger",
+      "passed": 7,
+      "total": 8,
+      "failures": [
+        {
+          "query": "k8s 클러스터에 새 서비스 배포 매니페스트 써 줘",
+          "expect": "none",
+          "picks": [
+            "none",
+            "python-dev",
+            "python-dev",
+            "python-dev",
+            "python-dev"
+          ]
+        }
+      ]
+    },
+    {
+      "model": "qwen3.5:9b",
+      "api": "ollama",
+      "date": "2026-09-26",
+      "think": false,
+      "runs": 5,
+      "mode": "trigger",
+      "passed": 8,
+      "total": 8,
+      "failures": [],
+      "skill_sha": "c529ec21b0c5"
+    }
+  ]
+}
