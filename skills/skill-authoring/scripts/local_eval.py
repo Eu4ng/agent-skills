@@ -26,12 +26,20 @@ import urllib.request
 from collections import Counter
 from pathlib import Path
 
+try:
+    import fcntl
+except ImportError:  # Windows: 잠금 없이 기록한다
+    fcntl = None  # type: ignore[assignment]
+
 EXIT_OK = 0
 EXIT_FAILED = 1
 EXIT_USAGE = 2
 EXIT_CHECKS_FAILED = 3
 
 MAX_TOOL_OUTPUT = 12000
+ASK_RE = re.compile(
+    r"\?\s*$|\?\n|알려\s?주세요|알려\s?주시|주시겠어요|말씀해\s?주세요", re.MULTILINE
+)
 log = logging.getLogger("local_eval")
 
 
@@ -194,7 +202,12 @@ def run_trigger(
     names = {s["name"] for s in skills}
     results = []
     for item in queries:
-        expected = item.get("expect") or "none"
+        raw = item.get("expect")
+        # 두 스킬이 모두 맞는 요청이면 목록으로 준다. 그중 하나를 고르면 맞다
+        accepted = (
+            [str(x) for x in raw] if isinstance(raw, list) else [str(raw or "none")]
+        )
+        expected = " | ".join(accepted)
         picks = []
         for _ in range(runs):
             reply = client.chat(
@@ -210,7 +223,7 @@ def run_trigger(
                 if pick in names or pick in {"none", "invalid"}
                 else f"unknown:{pick}"
             )
-        hit = sum(p == expected for p in picks) / runs
+        hit = sum(p in accepted for p in picks) / runs
         results.append(
             {
                 "query": item["query"],
@@ -509,6 +522,7 @@ def behavior_checks(
     - expect_skill: 켜야 하는 스킬 이름
     - expect_commands: 실행했어야 하는 명령의 정규식 목록(하나라도 맞는 명령이 있어야 한다)
     - expect_ask: true 면 사용자에게 물었어야 하고, false 면 묻지 않았어야 한다
+    - expect_final / reject_final: 최종 답변에 있어야 할 / 없어야 할 정규식 목록
     """
     checks: list[dict[str, object]] = []
     if skill := case.get("expect_skill"):
@@ -530,8 +544,29 @@ def behavior_checks(
                 "output": "; ".join(commands)[-300:],
             }
         )
+    final = str(result.get("final", ""))
+    for pattern in case.get("expect_final", []):  # type: ignore[union-attr]
+        checks.append(
+            {
+                "check": f"답변에 /{pattern}/ 이 있다",
+                "pass": bool(re.search(str(pattern), final)),
+                "output": final[-300:],
+            }
+        )
+    for pattern in case.get("reject_final", []):  # type: ignore[union-attr]
+        hit = re.search(str(pattern), final)
+        checks.append(
+            {
+                "check": f"답변에 /{pattern}/ 이 없다",
+                "pass": not hit,
+                "output": hit.group(0) if hit else "",
+            }
+        )
     if "expect_ask" in case:
-        asked = bool(result["asked"])
+        # ask_user 도구 대신 최종 답변에서 질문해도 실제 도구에서는 물은 것이다
+        asked = bool(result["asked"]) or bool(
+            ASK_RE.search(str(result.get("final", "")))
+        )
         checks.append(
             {
                 "check": "사용자에게 물었다"
@@ -588,21 +623,29 @@ def record(evals_dir: Path, entry: dict[str, object]) -> Path:
             **entry,
             "skill_sha": hashlib.sha256(skill_md.read_bytes()).hexdigest()[:12],
         }
-    data = (
-        json.loads(path.read_text(encoding="utf-8"))
-        if path.is_file()
-        else {"results": []}
-    )
-    fields = ("model", "mode", "api", "think", "activation")
-    key = tuple(entry.get(f) for f in fields)
-    data["results"] = [
-        r for r in data["results"] if tuple(r.get(f) for f in fields) != key
-    ]
-    data["results"].append(entry)
-    data["results"].sort(key=lambda r: (r["mode"], r["model"], bool(r.get("think"))))
-    path.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    # 모델마다 다른 서버로 여러 점검을 동시에 돌리면 같은 파일을 함께 고친다. 읽기부터 쓰기까지 잠근다
+    with (evals_dir / ".results.lock").open("w") as lock:
+        if fcntl is not None:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+        data = (
+            json.loads(path.read_text(encoding="utf-8"))
+            if path.is_file()
+            else {"results": []}
+        )
+        fields = ("model", "mode", "api", "think", "activation")
+        key = tuple(entry.get(f) for f in fields)
+        data["results"] = [
+            r for r in data["results"] if tuple(r.get(f) for f in fields) != key
+        ]
+        data["results"].append(entry)
+        data["results"].sort(
+            key=lambda r: (r["mode"], r["model"], bool(r.get("think")))
+        )
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        tmp.replace(path)
     return path
 
 
@@ -634,6 +677,8 @@ def record_run(evals_path: Path, outcomes: list[dict], base: dict[str, object]) 
             "id": o["id"],
             "pass": all(c["pass"] for c in o["checks"]),
             "skills_read": o["skills_read"],
+            "checks_passed": sum(c["pass"] for c in o["checks"]),
+            "checks_total": len(o["checks"]),
             "failed_checks": [c["check"] for c in o["checks"] if not c["pass"]],
         }
         for o in outcomes
@@ -648,6 +693,32 @@ def record_run(evals_path: Path, outcomes: list[dict], base: dict[str, object]) 
     return str(record(evals_path.resolve().parent, entry))
 
 
+def report(skill_dirs: list[Path]) -> str:
+    """스킬마다 results.json 을 모델·모드별 마크다운 표로 만든다. 현재 SKILL.md 판의 결과인지 표시한다."""
+    lines = [
+        "| 스킬 | 모드 | 모델 | 생각 | 통과 | 확인 항목 | 날짜 | 현재 판 |",
+        "| :--- | :--- | :--- | :--- | ---: | ---: | :--- | :--- |",
+    ]
+    for skill in skill_dirs:
+        path = skill / "evals" / "results.json"
+        if not path.is_file():
+            lines.append(f"| {skill.name} | - | - | - | - | - | - | 결과 없음 |")
+            continue
+        current = hashlib.sha256((skill / "SKILL.md").read_bytes()).hexdigest()[:12]
+        for r in json.loads(path.read_text(encoding="utf-8"))["results"]:
+            same = "예" if r.get("skill_sha") == current else "아니오"
+            think = "켬" if r.get("think") else "끔"
+            cases = r.get("cases") or []
+            checks = "-"
+            if cases and all("checks_total" in c for c in cases):
+                checks = f"{sum(c['checks_passed'] for c in cases)}/{sum(c['checks_total'] for c in cases)}"
+            lines.append(
+                f"| {skill.name} | {r['mode']} | {r['model']} | {think} | {r.get('passed')}/{r.get('total')} "
+                f"| {checks} | {r.get('date', '')} | {same} |"
+            )
+    return "\n".join(lines) + "\n"
+
+
 # ---------------------------------------------------------------- CLI
 
 
@@ -658,18 +729,25 @@ def build_parser() -> argparse.ArgumentParser:
             "예:\n"
             "  local_eval.py trigger --skills skills/* --queries skills/*/evals/triggers.json --runs 5\n"
             "  local_eval.py run --skills skills/* --evals skills/x/evals/evals.json --workdir /tmp/ev --allow-commands\n"
-            "  local_eval.py run --skills skills/* --task '이 절차를 스킬로 만들어 줘' --workdir /tmp/ev\n\n"
+            "  local_eval.py run --skills skills/* --task '이 절차를 스킬로 만들어 줘' --workdir /tmp/ev\n"
+            "  local_eval.py report --skills skills/*   # 기록된 결과를 표로\n\n"
             "모델 서버: --base-url 또는 LOCAL_LLM_URL(기본 http://127.0.0.1:11434), --model 또는 LOCAL_LLM_MODEL.\n"
             "OpenAI 호환 서버에 키가 필요하면 LOCAL_LLM_API_KEY.\n"
-            'triggers.json: [{"query": "...", "expect": "<스킬 이름>" 또는 null}]\n'
-            'evals.json: {"evals": [{"id", "prompt", "checks": ["작업 폴더에서 실행할 확인 명령, $EVAL_SKILLS_DIR 사용 가능"]}]}\n'
+            'triggers.json: [{"query": "...", "expect": "<스킬 이름>" | ["<스킬>", ...] | null}]\n'
+            'evals.json: {"evals": [{"id", "prompt", "expect_skill", "expect_commands": [정규식], "expect_ask": bool,\n'
+            '             "expect_final": [정규식], "reject_final": [정규식], "home_files": {"홈 기준 경로": "evals 기준 파일"},\n'
+            '             "checks": ["작업 폴더에서 실행할 확인 명령, $EVAL_SKILLS_DIR 사용 가능"]}]}\n'
             "run_command 는 모델이 만든 명령을 그대로 실행하므로 --allow-commands 를 줄 때만 켜진다. 버려도 되는 폴더에서 돌린다.\n"
             "출력: stdout 에 요약 JSON, --output 에 대화 전체.\n"
             "exit code: 0 통과, 1 모델 호출 실패, 2 사용법 오류, 3 점검 실패(트리거 오답 또는 checks 실패)"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("mode", choices=["trigger", "run"])
+    parser.add_argument(
+        "mode",
+        choices=["trigger", "run", "report"],
+        help="report: results.json 을 표로 낸다",
+    )
     parser.add_argument(
         "--skills",
         nargs="+",
@@ -744,6 +822,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s", stream=sys.stderr)
+    if args.mode == "report":
+        sys.stdout.write(report([p.resolve() for p in args.skills]))
+        return EXIT_OK
     if not args.model:
         log.error("오류: --model 또는 LOCAL_LLM_MODEL 이 필요하다 (예: gemma4:e4b)")
         return EXIT_USAGE
@@ -804,6 +885,11 @@ def main(argv: list[str] | None = None) -> int:
                 home = (args.home or workdir / "home").resolve()
                 workdir.mkdir(parents=True, exist_ok=True)
                 home.mkdir(parents=True, exist_ok=True)
+                for rel, source in dict(case.get("home_files", {})).items():
+                    # 사례가 가정하는 환경 파일(예: 가짜 environment.md)을 모델의 홈에 넣는다
+                    target = home / rel
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copyfile(args.evals.resolve().parent / source, target)
                 sandbox = Sandbox(
                     workdir,
                     home,

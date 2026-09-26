@@ -229,3 +229,86 @@ def test_behavior_checks_cover_skill_commands_and_asking() -> None:
     }
     passed = [c["pass"] for c in local_eval.behavior_checks(case, result)]
     assert passed == [True, True, False, False]
+
+
+def test_record_keeps_entries_from_parallel_writers(tmp_path: Path) -> None:
+    import threading
+
+    def write(model: str) -> None:
+        local_eval.record(tmp_path, {"model": model, "api": "ollama", "mode": "run"})
+
+    threads = [threading.Thread(target=write, args=(f"m{i}",)) for i in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    data = json.loads((tmp_path / "results.json").read_text(encoding="utf-8"))
+    assert sorted(r["model"] for r in data["results"]) == [f"m{i}" for i in range(8)]
+
+
+def test_behavior_checks_count_questions_in_final_answer() -> None:
+    case = {"expect_ask": True}
+    result = {
+        "skills_read": [],
+        "commands": [],
+        "asked": [],
+        "final": "서버 주소를 알려주세요",
+    }
+    assert [c["pass"] for c in local_eval.behavior_checks(case, result)] == [True]
+    result["final"] = "파일을 만들었다."
+    assert [c["pass"] for c in local_eval.behavior_checks(case, result)] == [False]
+
+
+def test_behavior_checks_expect_and_reject_final() -> None:
+    case = {
+        "expect_final": [r"panel_check"],
+        "reject_final": [r"kubectl apply(?!.*dry-run)"],
+    }
+    good = {
+        "skills_read": [],
+        "commands": [],
+        "asked": [],
+        "final": "python3 panel_check.py; kubectl apply --dry-run=server",
+    }
+    bad = {
+        "skills_read": [],
+        "commands": [],
+        "asked": [],
+        "final": "kubectl apply -f x.yaml",
+    }
+    assert [c["pass"] for c in local_eval.behavior_checks(case, good)] == [True, True]
+    assert [c["pass"] for c in local_eval.behavior_checks(case, bad)] == [False, False]
+
+
+def test_trigger_accepts_any_of_listed_skills() -> None:
+    class FakeClient:
+        def __init__(self, answers: list[str]) -> None:
+            self.answers = iter(answers)
+
+        def chat(self, messages: list[dict], tools: list | None = None) -> dict:
+            return {"content": json.dumps({"skill": next(self.answers)})}
+
+    skills = [{"name": n, "description": "d", "location": "x"} for n in ("a", "b")]
+    queries = [{"query": "q1", "expect": ["a", "b"]}, {"query": "q2", "expect": None}]
+    report = local_eval.run_trigger(
+        FakeClient(["b", "a", "b", "none", "a", "none"]), skills, queries, 3
+    )
+    assert [r["pass"] for r in report["results"]] == [True, True]
+    assert report["results"][0]["expect"] == "a | b"
+
+
+def test_report_marks_current_version(tmp_path: Path) -> None:
+    skill = make_skill(tmp_path, "rep", "# 본문")
+    (skill / "evals").mkdir()
+    local_eval.record(
+        skill / "evals",
+        {"model": "m", "api": "ollama", "mode": "trigger", "passed": 3, "total": 4},
+    )
+    table = local_eval.report([skill])
+    assert "| rep | trigger | m | 끔 | 3/4 | - |" in table and table.rstrip().endswith(
+        "| 예 |"
+    )
+    (skill / "SKILL.md").write_text(
+        "---\nname: rep\ndescription: 바뀜.\n---\n", encoding="utf-8"
+    )
+    assert local_eval.report([skill]).rstrip().endswith("| 아니오 |")
