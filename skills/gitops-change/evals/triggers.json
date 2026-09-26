@@ -1,0 +1,33 @@
+[
+  {
+    "query": "monitoring 에 grafana 시간대 Asia/Seoul 로 바꿔서 클러스터에 반영해 줘",
+    "expect": [
+      "gitops-change",
+      "grafana-dashboard"
+    ]
+  },
+  {
+    "query": "새 서비스 weather 수집기 클러스터에 올려 줘. 매니페스트는 내가 대충 써 뒀어",
+    "expect": "gitops-change"
+  },
+  {
+    "query": "argo 에서 telegraf 앱이 계속 OutOfSync 야. 왜 그래?",
+    "expect": "gitops-change"
+  },
+  {
+    "query": "엣지 클러스터 zigbee2mqtt 파드가 CrashLoopBackOff 인데 고쳐 줘",
+    "expect": "gitops-change"
+  },
+  {
+    "query": "proxmox 호스트의 /etc/network/interfaces 에 vlan 하나 추가해 줘",
+    "expect": null
+  },
+  {
+    "query": "kubectl 로 파드 목록 보는 명령 알려 줘",
+    "expect": null
+  },
+  {
+    "query": "블로그 글 오타 좀 고쳐 줘",
+    "expect": null
+  }
+]

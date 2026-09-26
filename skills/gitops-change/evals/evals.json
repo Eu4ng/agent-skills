@@ -1,0 +1,25 @@
+{
+  "skill_name": "gitops-change",
+  "evals": [
+    {
+      "id": "grafana-timezone",
+      "prompt": "monitoring 서비스의 grafana 시간대를 Asia/Seoul 로 바꿔서 클러스터에 반영해 줘. 이 환경에서는 명령을 직접 실행할 수 없으니, 저장소 파일을 어떻게 고치고 어떤 명령을 어떤 순서로 실행해 확인할지 구체적으로 알려 줘.",
+      "expected_output": "저장소 values 를 고치고, 렌더링·서버 dry-run, push, argo_wait.py 로 커밋 반영과 Synced/Healthy 대기, rollout 확인 순서를 제시한다. kubectl 로 직접 고치지 않는다.",
+      "home_files": {
+        ".agents/environment.md": "fixtures/environment.md"
+      },
+      "expect_skill": "gitops-change",
+      "expect_ask": false,
+      "expect_final": [
+        "dry-run",
+        "argo_wait",
+        "rollout status|Synced"
+      ],
+      "reject_final": [
+        "kubectl (edit|patch)",
+        "kubectl apply -f(?![^\\n]*dry-run)"
+      ],
+      "checks": []
+    }
+  ]
+}

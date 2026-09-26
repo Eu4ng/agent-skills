@@ -1,0 +1,123 @@
+{
+  "results": [
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-27",
+      "think": false,
+      "activation": "tool",
+      "mode": "run",
+      "passed": 0,
+      "total": 1,
+      "cases": [
+        {
+          "id": "grafana-timezone",
+          "pass": false,
+          "skills_read": [
+            "grafana-dashboard"
+          ],
+          "failed_checks": [
+            "스킬 gitops-change 을 켰다",
+            "답변에 /dry-run/ 이 있다",
+            "답변에 /argo_wait/ 이 있다",
+            "답변에 /rollout status|Synced/ 이 있다",
+            "사용자에게 묻지 않았다"
+          ]
+        }
+      ],
+      "skill_sha": "b43002796ff9"
+    },
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-27",
+      "think": true,
+      "activation": "tool",
+      "mode": "run",
+      "passed": 0,
+      "total": 1,
+      "cases": [
+        {
+          "id": "grafana-timezone",
+          "pass": false,
+          "skills_read": [
+            "grafana-dashboard"
+          ],
+          "failed_checks": [
+            "스킬 gitops-change 을 켰다",
+            "답변에 /dry-run/ 이 있다",
+            "답변에 /argo_wait/ 이 있다",
+            "답변에 /rollout status|Synced/ 이 있다",
+            "사용자에게 묻지 않았다"
+          ]
+        }
+      ],
+      "skill_sha": "b43002796ff9"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "api": "ollama",
+      "date": "2026-09-27",
+      "think": false,
+      "activation": "tool",
+      "mode": "run",
+      "passed": 0,
+      "total": 1,
+      "cases": [
+        {
+          "id": "grafana-timezone",
+          "pass": false,
+          "skills_read": [
+            "gitops-change",
+            "grafana-dashboard"
+          ],
+          "checks_passed": 3,
+          "checks_total": 7,
+          "failed_checks": [
+            "답변에 /dry-run/ 이 있다",
+            "답변에 /argo_wait/ 이 있다",
+            "답변에 /rollout status|Synced/ 이 있다",
+            "사용자에게 묻지 않았다"
+          ]
+        }
+      ],
+      "skill_sha": "b43002796ff9"
+    },
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-27",
+      "think": false,
+      "runs": 5,
+      "mode": "trigger",
+      "passed": 7,
+      "total": 7,
+      "failures": [],
+      "skill_sha": "e7dbad331dd7"
+    },
+    {
+      "model": "qwen3.5:9b",
+      "api": "ollama",
+      "date": "2026-09-27",
+      "think": false,
+      "runs": 5,
+      "mode": "trigger",
+      "passed": 6,
+      "total": 7,
+      "failures": [
+        {
+          "query": "엣지 클러스터 zigbee2mqtt 파드가 CrashLoopBackOff 인데 고쳐 줘",
+          "expect": "gitops-change",
+          "picks": [
+            "none",
+            "none",
+            "none",
+            "none",
+            "none"
+          ]
+        }
+      ],
+      "skill_sha": "b43002796ff9"
+    }
+  ]
+}
