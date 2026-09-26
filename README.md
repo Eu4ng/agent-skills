@@ -6,6 +6,9 @@
 | 스킬 | 용도 |
 | :--- | :--- |
 | `commit` | Conventional Commits 기반 커밋 메시지 작성 규칙 |
+| `skill-authoring` | 표준·공급자 중립 방식으로 스킬을 만들고 고치는 절차, 검사 스크립트 |
+| `python-dev` | 공식 문서 기준 파이썬 스크립트·프로젝트·테스트 작성 규칙 |
+| `env-onboarding` | PC 별 환경 정보 파일(`~/.agents/environment.md`) 생성·점검 |
 
 ## 설치
 
@@ -28,7 +31,12 @@ npx skills add eu4ng/agent-skills -g
 
 갱신은 `npx skills update`.
 
+### 새 PC 에서
+
+스킬을 설치한 뒤 에이전트에게 "환경 온보딩 해 줘"라고 한다. `env-onboarding` 이 서버·접속 경로·저장소 정보를
+감지하고 모르는 것만 물어 `~/.agents/environment.md` 를 만든다. 이 파일은 git 에 올리지 않는다. 다른 PC 로
+옮길 때는 이 파일만 복사하고 다시 온보딩을 실행해 점검한다.
+
 ## 스킬 추가
 
-`skills/<이름>/SKILL.md` 를 만들고 README 표에 한 줄 추가한다. 매니페스트는 `skills/` 아래를 자동으로 읽으므로
-고칠 것이 없다. 커밋 전에 `claude plugin validate .` 로 검사한다.
+`skill-authoring` 스킬의 절차를 따른다. 저장소 규칙과 검사 명령은 [AGENTS.md](AGENTS.md) 에 있다.
