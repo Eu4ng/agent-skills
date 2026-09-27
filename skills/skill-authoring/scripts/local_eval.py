@@ -99,9 +99,12 @@ class Client:
         num_ctx: int,
         think: bool,
         timeout: int,
+        max_tokens: int = 8192,
     ) -> None:
         self.api, self.base_url, self.model = api, base_url.rstrip("/"), model
         self.num_ctx, self.think, self.timeout = num_ctx, think, timeout
+        # 작은 모델은 가끔 같은 문장을 끝없이 되풀이한다. 응답 하나의 길이를 막아 요청이 시간 초과로 끝나지 않게 한다
+        self.max_tokens = max_tokens
         self.usage = Counter()
 
     def chat(
@@ -116,11 +119,20 @@ class Client:
                 "messages": messages,
                 "stream": False,
                 "think": self.think,
-                "options": {"num_ctx": self.num_ctx, "temperature": 0.2},
+                "options": {
+                    "num_ctx": self.num_ctx,
+                    "temperature": 0.2,
+                    "num_predict": self.max_tokens,
+                },
             }
             url = f"{self.base_url}/api/chat"
         else:
-            body = {"model": self.model, "messages": messages, "temperature": 0.2}
+            body = {
+                "model": self.model,
+                "messages": messages,
+                "temperature": 0.2,
+                "max_tokens": self.max_tokens,
+            }
             url = f"{self.base_url}/v1/chat/completions"
         if tools:
             body["tools"] = tools
@@ -626,6 +638,19 @@ def remote_prepare(
     return None
 
 
+def chat_with_retry(client: object, messages: list[dict[str, object]], tools: list[dict[str, object]] | None,
+                    attempts: int = 2) -> dict[str, object]:  # fmt: skip
+    """모델 호출이 시간 초과·연결 오류로 실패하면 한 번 더 부른다."""
+    for attempt in range(attempts):
+        try:
+            return client.chat(messages, tools)  # type: ignore[attr-defined]
+        except (urllib.error.URLError, TimeoutError) as exc:
+            if attempt == attempts - 1:
+                raise
+            log.warning("모델 호출 실패, 다시 시도: %s", exc)
+    raise AssertionError("도달하지 않음")
+
+
 def run_task(
     client: Client,
     skills: list[dict[str, str]],
@@ -656,7 +681,12 @@ def run_task(
     calls_log: list[dict[str, object]] = []
     final, stopped, turn = "", "max_turns", 0
     for turn in range(1, max_turns + 1):
-        reply = client.chat(messages, tools)
+        try:
+            reply = chat_with_retry(client, messages, tools)
+        except (urllib.error.URLError, TimeoutError) as exc:
+            # 모델 서버가 끝내 답하지 않아도 그때까지 한 일(명령·변경)은 확인 명령으로 채점할 수 있게 남긴다
+            final, stopped = f"모델 호출 실패: {exc}", "model_error"
+            break
         messages.append(client.assistant_message(reply))
         if not reply["tool_calls"]:
             final, stopped = str(reply["content"]), "answered"
@@ -1042,6 +1072,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--timeout", type=int, default=900, help="모델 요청 하나의 제한 시간(초)"
     )
     parser.add_argument(
+        "--max-tokens",
+        type=int,
+        default=4096,
+        help="모델 응답 하나의 최대 생성 토큰(생각 포함, 기본 4096)",
+    )
+    parser.add_argument(
         "--record",
         action="store_true",
         help="결과를 질의·사례 파일 옆 results.json 에 모델별로 남긴다",
@@ -1085,7 +1121,13 @@ def main(argv: list[str] | None = None) -> int:
         log.error("오류: 스킬을 읽을 수 없다: %s", exc)
         return EXIT_USAGE
     client = Client(
-        args.api, args.base_url, args.model, args.num_ctx, args.think, args.timeout
+        args.api,
+        args.base_url,
+        args.model,
+        args.num_ctx,
+        args.think,
+        args.timeout,
+        args.max_tokens,
     )
     started = time.monotonic()
     try:

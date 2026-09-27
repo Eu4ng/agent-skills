@@ -94,6 +94,8 @@ def test_check_expands_repeat_and_reports_error_and_empty() -> None:
     statuses = {(p["panel"], p["status"]) for p in report["panels"]}
     assert ("battery", "error") in statuses
     assert ("빈 표", "empty") in statuses
+    error = next(p for p in report["panels"] if p["status"] == "error")
+    assert error["raw_sql"] == "SELECT v FROM r WHERE property = $prop"
     assert report["counts"]["error"] == 1
     assert report["variables"] == [{"variable": "prop", "values": 2, "error": None}]
 

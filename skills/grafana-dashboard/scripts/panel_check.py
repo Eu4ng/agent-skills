@@ -304,6 +304,8 @@ def check(
                 if out["error"]:
                     entry["error"] = str(out["error"])[:400]
                     entry["sql"] = sql[:400]
+                    # 원본 JSON 에서 찾을 문자열: 변수가 풀리기 전의 쿼리
+                    entry["raw_sql"] = str(target["rawSql"])[:400]
                 results.append(entry)
     counts = {
         s: sum(r["status"] == s for r in results)
@@ -330,7 +332,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  python3 panel_check.py --uid my-dash --wait-contains 'state-timeline' --wait 180\n"
             '  python3 panel_check.py --uid my-dash --url http://<Grafana> --admin-secret monitoring/grafana-admin --kubectl "ssh cp kubectl"\n\n'
             '출력: {"dashboard", "version", "updated", "variables": [...], "counts": {ok, empty, error, skipped},\n'
-            '       "panels": [{panel, type, status: ok|empty|error|skipped, rows, error?, sql?, repeat?}]}\n'
+            '       "panels": [{panel, type, status: ok|empty|error|skipped, rows, error?, sql?(변수가 풀린 쿼리), raw_sql?(원본 JSON 의 쿼리), repeat?}]}\n'
             "exit code: 0 오류 없음(빈 결과는 --fail-empty 일 때만 실패), 1 오류 또는 빈 결과,\n"
             "           2 사용법 오류, 3 Grafana 접속·인증 실패"
         ),

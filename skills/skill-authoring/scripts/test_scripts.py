@@ -379,3 +379,22 @@ def test_pack_dir_skips_evals_and_cache(tmp_path: Path) -> None:
         and not any(n.startswith("evals") for n in names)
         and not any("__pycache__" in n for n in names)
     )
+
+
+def test_chat_with_retry_retries_once_then_raises() -> None:
+    class Flaky:
+        def __init__(self, failures: int) -> None:
+            self.failures, self.calls = failures, 0
+
+        def chat(self, messages: object, tools: object) -> dict[str, object]:
+            self.calls += 1
+            if self.calls <= self.failures:
+                raise TimeoutError("timed out")
+            return {"content": "ok", "tool_calls": []}
+
+    ok = Flaky(1)
+    assert local_eval.chat_with_retry(ok, [], None)["content"] == "ok" and ok.calls == 2
+    bad = Flaky(5)
+    with pytest.raises(TimeoutError):
+        local_eval.chat_with_retry(bad, [], None)
+    assert bad.calls == 2
