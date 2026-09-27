@@ -1,0 +1,22 @@
+[
+  {
+    "query": "이 브랜치로 PR 만들어 줘",
+    "expect": "pull-request"
+  },
+  {
+    "query": "PR 검사 통과했는지 보고 머지해",
+    "expect": "pull-request"
+  },
+  {
+    "query": "리뷰 요청 올려 줘",
+    "expect": "pull-request"
+  },
+  {
+    "query": "변경 사항 커밋해 줘",
+    "expect": "commit"
+  },
+  {
+    "query": "원격에 push 만 해 줘",
+    "expect": "git-push"
+  }
+]

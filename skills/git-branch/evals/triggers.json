@@ -1,0 +1,22 @@
+[
+  {
+    "query": "새 기능 작업 시작하게 브랜치 하나 따 줘",
+    "expect": "git-branch"
+  },
+  {
+    "query": "main 최신 걸로 내 브랜치 맞춰 줘",
+    "expect": "git-branch"
+  },
+  {
+    "query": "머지 끝난 브랜치들 정리해",
+    "expect": "git-branch"
+  },
+  {
+    "query": "이거 커밋 메시지 뭐로 쓰지",
+    "expect": "commit"
+  },
+  {
+    "query": "PR 올려 줘",
+    "expect": "pull-request"
+  }
+]

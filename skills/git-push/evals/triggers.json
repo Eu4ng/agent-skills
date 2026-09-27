@@ -1,0 +1,22 @@
+[
+  {
+    "query": "커밋한 거 원격에 올려 줘",
+    "expect": "git-push"
+  },
+  {
+    "query": "push 했더니 rejected 떴어",
+    "expect": "git-push"
+  },
+  {
+    "query": "방금 만든 브랜치 origin 에 반영해",
+    "expect": "git-push"
+  },
+  {
+    "query": "PR 머지해 줘",
+    "expect": "pull-request"
+  },
+  {
+    "query": "브랜치 새로 만들어",
+    "expect": "git-branch"
+  }
+]

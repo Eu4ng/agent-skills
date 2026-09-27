@@ -1,0 +1,22 @@
+[
+  {
+    "query": "지금 작업은 그대로 두고 다른 브랜치에서 급한 버그 먼저 고치자",
+    "expect": "git-worktree"
+  },
+  {
+    "query": "worktree 로 병렬 작업 폴더 만들어",
+    "expect": "git-worktree"
+  },
+  {
+    "query": "다 쓴 worktree 정리해 줘",
+    "expect": "git-worktree"
+  },
+  {
+    "query": "다른 브랜치로 체크아웃해",
+    "expect": "git-branch"
+  },
+  {
+    "query": "stash 한 거 다시 꺼내 줘",
+    "expect": null
+  }
+]
