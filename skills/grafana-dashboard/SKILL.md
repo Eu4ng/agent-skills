@@ -5,16 +5,12 @@ description: Grafana 대시보드를 만들거나 고칠 때 쓴다. 대시보�
 
 # Grafana 대시보드
 
+**먼저 `cat ~/.agents/environment.md` 를 실행해 읽는다.** kubectl 실행 명령, 네임스페이스, Grafana 주소·관리자 시크릿·대시보드 원본 위치가 그 파일에 있다.
+이 값들을 사용자에게 묻지 않는다.
+
 대시보드 수정은 JSON 이 바뀐 것으로 끝나지 않는다. 배포된 대시보드에서 모든 패널의 쿼리가 오류 없이 데이터를
 돌려주는 것까지 확인해야 끝난다. 화면을 직접 볼 수 없으면 API 로 확인한 범위만 보고한다.
 아래 `scripts/` 경로는 이 스킬 폴더 기준이다.
-
-대시보드가 아니라 Grafana 서버 설정(시간대, 인증, 데이터소스, 플러그인 등 배포 values)을 바꾸는 일이면 이 스킬의
-절차 대신 GitOps 변경 절차를 따른다. GitOps 변경을 다루는 스킬이 있으면 먼저 켠다.
-저장소를 고쳐 커밋·push 한 뒤, 동기화 도구의 앱 리비전이 push 한 커밋 SHA 와 같고 Synced·Healthy 가 될 때까지 기다린다
-(예: `<kubectl 실행 명령> -n argocd get app <앱> -o custom-columns=REV:.status.sync.revision,SYNC:.status.sync.status,HEALTH:.status.health.status`
-을 반복). 그 전에 본 롤아웃·로그는 옛 배포다. 그다음 배포된 리소스에 새 값이 들어갔는지 확인한다.
-설정 파일 위치는 사용자에게 묻지 말고 GitOps 저장소에서 찾는다.
 
 ## 환경 정보
 
@@ -42,9 +38,16 @@ description: Grafana 대시보드를 만들거나 고칠 때 쓴다. 대시보�
    `--kubectl` 에는 환경 정보의 kubectl 실행 명령을 그대로 넣는다(예: `--kubectl "ssh cp kubectl"`). 스크립트가 실패하면
    출력의 오류를 보고 인자를 고친다. 스크립트를 두고 API 를 직접 부르지 않는다.
 3. **원본 JSON 을 스크립트로 고친다.** 대시보드가 코드로 관리되면(GitOps 저장소에 대시보드 JSON 이 있으면) Grafana 화면이나
-   API 로 대시보드를 받아 고치거나 저장하지 않는다. 저장소의 원본 파일을 고친다. 오류 패널의 `raw_sql`(원본 JSON 의 쿼리)을
-   원본 파일에서 찾아(`grep -F`) 고친다. `sql` 은 변수가 풀린 쿼리라 원본에는 그대로 없다. 큰 JSON 은 문자열 치환 대신 `python3` 으로 읽고 고쳐 다시 쓴다. 같은 종류의 패널·변수가 여러 개면 전부
-   같은 규칙으로 고친다. 고친 뒤에도 같은 오류가 나면 검사 결과의 `sql`(실제로 실행된 쿼리)과 `raw_sql` 을 비교해 원본 쿼리를 다시 고친다.
+   API 로 대시보드를 받아 고치거나 저장하지 않는다. 저장소의 원본 파일을 고친다. 오류 패널의 `raw_sql` 이 원본 JSON 에
+   있는 쿼리다(원본에서는 패널의 `targets[].rawSql`). `sql` 은 변수가 풀린 쿼리라 원본에는 그대로 없다.
+   쿼리의 일부를 바꿀 때는 아래 스크립트를 쓴다. JSON 이스케이프를 알아서 처리하고 서식은 그대로 두며 바꾼 개수를 낸다.
+
+   ```bash
+   python3 <이 스킬 폴더>/scripts/json_replace.py <원본 JSON> '<raw_sql 에서 바꿀 부분>' '<새 내용>'
+   ```
+
+   `replaced` 가 0 이면 `raw_sql` 에 보이는 문자열을 그대로 다시 넘긴다. 같은 종류의 패널·변수가 여러 개면 전부 같은 규칙으로
+   고친다. 고친 뒤에도 같은 오류가 나면 검사 결과의 `sql` 과 `raw_sql` 을 비교해 다시 고친다.
 4. **배포한다.** 원본 저장소의 절차를 따른다. GitOps 면 커밋·push 하고, 동기화 도구가 새 커밋으로 Synced 가 될 때까지 기다린다.
 5. **반영을 기다린 뒤 다시 검사한다.** 새 JSON 에만 있는 문자열로 배포 반영을 확인하고 전체 패널을 검사한다.
 
@@ -57,6 +60,20 @@ description: Grafana 대시보드를 만들거나 고칠 때 쓴다. 대시보�
    반영 전에 대기가 끝나면(시간 초과) 같은 명령을 다시 실행한다. 사용자에게 기다려 달라고 넘기지 않는다.
 6. **검증**: `counts.error` 가 0 이고, 데이터가 있어야 할 패널이 `empty` 가 아닐 때까지 고치고 다시 실행한다.
    통과하기 전에는 끝났다고 보고하지 않는다. 보고에는 "화면이 아니라 API 로 쿼리를 확인했다"고 밝힌다.
+
+## 서버 설정을 바꾸는 경우 (GitOps)
+
+대시보드가 아니라 Grafana 서버 설정(시간대, 인증, 데이터소스, 플러그인 등 배포 values)을 바꾸는 일이면 위 절차 대신 GitOps 변경 절차를 따른다. GitOps 변경을 다루는 스킬이 있으면 먼저 켠다.
+설정 파일 위치는 사용자에게 묻지 말고 GitOps 저장소에서 찾는다. 저장소를 고쳐 커밋·push 한 뒤, 동기화 도구가 push 한
+커밋으로 Synced·Healthy 가 될 때까지 아래 명령으로 기다린다. 한 줄이 출력되면 반영된 것이고, 아무것도 안 나오면 다시
+실행한다. 그 전에 본 롤아웃·로그는 옛 배포다. 그다음 배포된 리소스에 새 값이 들어갔는지 확인한다.
+
+```bash
+H=$(git -C <저장소> rev-parse HEAD)
+for i in 1 2 3 4 5 6; do <kubectl 실행 명령> -n argocd get app <앱> --no-headers \
+  -o custom-columns=REV:.status.sync.revision,SYNC:.status.sync.status,HEALTH:.status.health.status \
+  | grep "^$H *Synced *Healthy" && break; sleep 15; done
+```
 
 ## 규칙
 
@@ -96,6 +113,8 @@ description: Grafana 대시보드를 만들거나 고칠 때 쓴다. 대시보�
 - `scripts/panel_check.py`: 대시보드의 모든 패널(반복 패널은 값마다)의 SQL 쿼리를 `/api/ds/query` 로 실행해
   ok·empty·error 를 JSON 으로 낸다. 변수 쿼리도 실제로 실행하고, 저장된 선택값과 사용자 정의 All 값을 Grafana 처럼
   끼워 넣는다. `--admin-secret` 과 `--kubectl` 로 자격 증명을 시크릿에서 직접 읽는다. 표준 라이브러리만 쓴다. `--help` 참고.
+- `scripts/json_replace.py`: JSON 파일의 문자열 값에서 문자열을 바꾼다. 이스케이프를 처리하고 원문 서식을 유지하며,
+  바꾼 뒤 JSON 이 올바른지 확인한다. `--dry-run` 을 지원한다.
 
 ## 하지 않는 것
 

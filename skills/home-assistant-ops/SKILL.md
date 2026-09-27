@@ -5,15 +5,12 @@ description: Home Assistant 의 기기·엔티티·영역·통합 설정을 바�
 
 # Home Assistant 운영
 
+**먼저 `cat ~/.agents/environment.md` 를 실행해 읽는다.** kubectl 실행 명령, 네임스페이스, HA 인스턴스·토큰 시크릿 위치가 그 파일에 있다.
+이 값들을 사용자에게 묻지 않는다.
+
 사용자는 UI 로 하나씩 누르는 안내보다 한 번에 끝나는 스크립트를 원한다. HA 설정은 WebSocket·REST API 로 바꾸고,
 같은 종류의 대상은 전부 한 번에 처리한다. 토큰은 사용자에게 묻지 않는다. 스크립트가 시크릿에서 직접 읽는다.
 아래 `scripts/` 경로는 이 스킬 폴더 기준이다.
-
-HA 의 배포 설정(자원 한도, 이미지, 볼륨, 네트워크)을 바꾸는 일이면 이 스킬의 절차 대신 GitOps 변경 절차를 따른다.
-GitOps 변경을 다루는 스킬이 있으면 먼저 켠다.
-저장소를 고쳐 커밋·push 한 뒤, 동기화 도구의 앱 리비전이 push 한 커밋 SHA 와 같고 Synced·Healthy 가 될 때까지 기다린다
-(예: `<kubectl 실행 명령> -n argocd get app <앱> -o custom-columns=REV:.status.sync.revision,SYNC:.status.sync.status,HEALTH:.status.health.status`
-을 반복). 그 전에 본 롤아웃·로그는 옛 배포다. 그다음 배포된 리소스에 새 값이 들어갔는지 확인한다.
 
 ## 환경 정보
 
@@ -66,6 +63,20 @@ GitOps 변경을 다루는 스킬이 있으면 먼저 켠다.
    - 데이터가 흘러가는 곳(MQTT, DB)이 있으면 새 이름·값으로 들어오는지 본다.
 
    통과하기 전에는 끝났다고 보고하지 않는다.
+
+## 서버 설정을 바꾸는 경우 (GitOps)
+
+HA 의 배포 설정(자원 한도, 이미지, 볼륨, 네트워크)을 바꾸는 일이면 위 절차 대신 GitOps 변경 절차를 따른다. GitOps 변경을 다루는 스킬이 있으면 먼저 켠다.
+설정 파일 위치는 사용자에게 묻지 말고 GitOps 저장소에서 찾는다. 저장소를 고쳐 커밋·push 한 뒤, 동기화 도구가 push 한
+커밋으로 Synced·Healthy 가 될 때까지 아래 명령으로 기다린다. 한 줄이 출력되면 반영된 것이고, 아무것도 안 나오면 다시
+실행한다. 그 전에 본 롤아웃·로그는 옛 배포다. 그다음 배포된 리소스에 새 값이 들어갔는지 확인한다.
+
+```bash
+H=$(git -C <저장소> rev-parse HEAD)
+for i in 1 2 3 4 5 6; do <kubectl 실행 명령> -n argocd get app <앱> --no-headers \
+  -o custom-columns=REV:.status.sync.revision,SYNC:.status.sync.status,HEALTH:.status.health.status \
+  | grep "^$H *Synced *Healthy" && break; sleep 15; done
+```
 
 ## 자주 쓰는 호출
 

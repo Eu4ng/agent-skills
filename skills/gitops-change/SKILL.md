@@ -5,6 +5,9 @@ description: Argo CD 같은 GitOps 도구가 관리하는 쿠버네티스 클러
 
 # GitOps 변경
 
+**먼저 `cat ~/.agents/environment.md` 를 실행해 읽는다.** kubectl 실행 명령, 네임스페이스, GitOps 저장소 위치·시크릿 위치가 그 파일에 있다.
+이 값들을 사용자에게 묻지 않는다.
+
 클러스터 상태의 원본은 GitOps 저장소다. 동기화 도구가 selfHeal·prune 으로 저장소와 다른 상태를 되돌린다. 그래서
 `kubectl apply`·`edit` 로 고친 것은 곧 사라지고, 저장소에서 지운 리소스는 클러스터에서도 지워진다. 변경은 항상
 저장소를 고쳐 push 하고, 동기화가 끝나 실제로 동작하는 것을 확인한 뒤에 보고한다.
