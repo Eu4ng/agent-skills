@@ -1,0 +1,22 @@
+[
+  {
+    "query": "워커 노드 메모리 줄여야 하는데 재시작해야 해",
+    "expect": "k8s-node-maintenance"
+  },
+  {
+    "query": "옛 노드 빼고 새 노드로 교체하자",
+    "expect": "k8s-node-maintenance"
+  },
+  {
+    "query": "control plane 하나 재부팅해도 돼?",
+    "expect": "k8s-node-maintenance"
+  },
+  {
+    "query": "파드가 Pending 에서 안 넘어가",
+    "expect": "k8s-troubleshoot"
+  },
+  {
+    "query": "Argo CD 앱 동기화 기다려 줘",
+    "expect": "gitops-change"
+  }
+]

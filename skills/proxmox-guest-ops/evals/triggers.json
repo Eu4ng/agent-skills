@@ -1,0 +1,22 @@
+[
+  {
+    "query": "그 VM 메모리 얼마나 쓰고 있어, 서버 여유는?",
+    "expect": "proxmox-guest-ops"
+  },
+  {
+    "query": "테스트용 컨테이너에 GPU 붙여 줘",
+    "expect": "proxmox-guest-ops"
+  },
+  {
+    "query": "VM 105 스냅샷 clean 으로 되돌려",
+    "expect": "proxmox-guest-ops"
+  },
+  {
+    "query": "쿠버네티스 워커 drain 하고 재부팅해",
+    "expect": "k8s-node-maintenance"
+  },
+  {
+    "query": "플레이북에 새 변수 추가해 줘",
+    "expect": "ansible-playbook"
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "results": [
+    {
+      "model": "gemma4:e4b",
+      "api": "ollama",
+      "date": "2026-09-28",
+      "think": false,
+      "runs": 5,
+      "mode": "trigger",
+      "passed": 5,
+      "total": 5,
+      "failures": [],
+      "skill_sha": "11ffa62a3e46"
+    }
+  ]
+}

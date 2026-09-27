@@ -1,0 +1,22 @@
+[
+  {
+    "query": "DB 지금 어느 파드가 주야",
+    "expect": "patroni-ops"
+  },
+  {
+    "query": "노드 작업 전에 DB 주 멤버 다른 데로 넘겨 줘",
+    "expect": "patroni-ops"
+  },
+  {
+    "query": "허브 DB 에서 최근 5분 행 수 쿼리해 봐",
+    "expect": "patroni-ops"
+  },
+  {
+    "query": "대시보드 패널에 새 쿼리 추가해",
+    "expect": "grafana-dashboard"
+  },
+  {
+    "query": "TimescaleDB 매니페스트 이미지 버전 올려",
+    "expect": "gitops-change"
+  }
+]

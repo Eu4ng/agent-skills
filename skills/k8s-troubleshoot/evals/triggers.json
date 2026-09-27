@@ -1,0 +1,22 @@
+[
+  {
+    "query": "파드가 CreateContainerConfigError 로 안 떠",
+    "expect": "k8s-troubleshoot"
+  },
+  {
+    "query": "서비스 VIP 로 접속하면 가끔 연결이 끊겨",
+    "expect": "k8s-troubleshoot"
+  },
+  {
+    "query": "앱이 Degraded 로 떠 있는데 왜 그래",
+    "expect": "k8s-troubleshoot"
+  },
+  {
+    "query": "노드 drain 하고 VM 재시작해",
+    "expect": "k8s-node-maintenance"
+  },
+  {
+    "query": "Grafana 패널 쿼리 고쳐 줘",
+    "expect": "grafana-dashboard"
+  }
+]

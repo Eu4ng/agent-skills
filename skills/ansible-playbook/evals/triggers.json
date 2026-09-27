@@ -1,0 +1,22 @@
+[
+  {
+    "query": "플레이북 고쳐서 새 CT 만들고 다시 돌려 봐",
+    "expect": "ansible-playbook"
+  },
+  {
+    "query": "group_vars 에 노드 추가하고 적용해",
+    "expect": "ansible-playbook"
+  },
+  {
+    "query": "이 셸 작업이 매번 changed 로 나오는데 멱등하게 바꿔",
+    "expect": "ansible-playbook"
+  },
+  {
+    "query": "쿠버네티스 매니페스트에 레플리카 늘려",
+    "expect": "gitops-change"
+  },
+  {
+    "query": "그 VM 지금 상태 봐 줘",
+    "expect": "proxmox-guest-ops"
+  }
+]
