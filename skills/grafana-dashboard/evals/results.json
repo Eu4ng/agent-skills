@@ -49,7 +49,7 @@
           ]
         }
       ],
-      "skill_sha": "71efa468900e"
+      "skill_sha": "5424d08650c2"
     },
     {
       "model": "qwen3.5:9b",
@@ -67,15 +67,14 @@
           "skills_read": [
             "grafana-dashboard"
           ],
-          "checks_passed": 4,
+          "checks_passed": 5,
           "checks_total": 6,
           "failed_checks": [
-            "git -C ~/gitops fetch -q && ! git -C ~/gitops show origin/main:services/monitoring/dashboards/home-records.json | grep -q 'property = \\$property'",
             "P=$(kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' | base64 -d); GRAFANA_URL=http://127.0.0.1:30082 GRAFANA_USER=admin GRAFANA_PASSWORD=\"$P\" python3 \"$EVAL_SKILLS_DIR/grafana-dashboard/scripts/panel_check.py\" --uid home-records | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d[\"counts\"]); sys.exit(0 if d[\"counts\"][\"error\"] == 0 and d[\"counts\"][\"ok\"] >= 3 else 1)'"
           ]
         }
       ],
-      "skill_sha": "47f6b7128803"
+      "skill_sha": "5424d08650c2"
     },
     {
       "model": "gemma4:e4b",

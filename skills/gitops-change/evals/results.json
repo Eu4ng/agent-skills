@@ -71,11 +71,10 @@
           "skills_read": [
             "grafana-dashboard"
           ],
-          "checks_passed": 7,
+          "checks_passed": 8,
           "checks_total": 9,
           "failed_checks": [
-            "스킬 gitops-change 을 켰다",
-            "kubectl -n monitoring get deploy grafana -o jsonpath='{.spec.template.spec.containers[0].env}' | grep -q 'Asia/Seoul'"
+            "스킬 gitops-change 을 켰다"
           ]
         }
       ],
