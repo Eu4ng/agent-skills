@@ -12,7 +12,7 @@ description: Home Assistant 의 기기·엔티티·영역·통합 설정을 바�
 HA 의 배포 설정(자원 한도, 이미지, 볼륨, 네트워크)을 바꾸는 일이면 이 스킬의 절차 대신 GitOps 변경 절차를 따른다.
 GitOps 변경을 다루는 스킬이 있으면 먼저 켠다.
 저장소를 고쳐 커밋·push 한 뒤, 동기화 도구의 앱 리비전이 push 한 커밋 SHA 와 같고 Synced·Healthy 가 될 때까지 기다린다
-(예: `<kubectl 실행 명령> -n argocd get app <앱> -o jsonpath='{.status.sync.revision} {.status.sync.status} {.status.health.status}'`
+(예: `<kubectl 실행 명령> -n argocd get app <앱> -o custom-columns=REV:.status.sync.revision,SYNC:.status.sync.status,HEALTH:.status.health.status`
 을 반복). 그 전에 본 롤아웃·로그는 옛 배포다. 그다음 배포된 리소스에 새 값이 들어갔는지 확인한다.
 
 ## 환경 정보

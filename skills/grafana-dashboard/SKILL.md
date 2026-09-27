@@ -12,7 +12,7 @@ description: Grafana 대시보드를 만들거나 고칠 때 쓴다. 대시보�
 대시보드가 아니라 Grafana 서버 설정(시간대, 인증, 데이터소스, 플러그인 등 배포 values)을 바꾸는 일이면 이 스킬의
 절차 대신 GitOps 변경 절차를 따른다. GitOps 변경을 다루는 스킬이 있으면 먼저 켠다.
 저장소를 고쳐 커밋·push 한 뒤, 동기화 도구의 앱 리비전이 push 한 커밋 SHA 와 같고 Synced·Healthy 가 될 때까지 기다린다
-(예: `<kubectl 실행 명령> -n argocd get app <앱> -o jsonpath='{.status.sync.revision} {.status.sync.status} {.status.health.status}'`
+(예: `<kubectl 실행 명령> -n argocd get app <앱> -o custom-columns=REV:.status.sync.revision,SYNC:.status.sync.status,HEALTH:.status.health.status`
 을 반복). 그 전에 본 롤아웃·로그는 옛 배포다. 그다음 배포된 리소스에 새 값이 들어갔는지 확인한다.
 설정 파일 위치는 사용자에게 묻지 말고 GitOps 저장소에서 찾는다.
 
@@ -42,9 +42,9 @@ description: Grafana 대시보드를 만들거나 고칠 때 쓴다. 대시보�
    `--kubectl` 에는 환경 정보의 kubectl 실행 명령을 그대로 넣는다(예: `--kubectl "ssh cp kubectl"`). 스크립트가 실패하면
    출력의 오류를 보고 인자를 고친다. 스크립트를 두고 API 를 직접 부르지 않는다.
 3. **원본 JSON 을 스크립트로 고친다.** 대시보드가 코드로 관리되면(GitOps 저장소에 대시보드 JSON 이 있으면) Grafana 화면이나
-   API 로 대시보드를 받아 고치거나 저장하지 않는다. 저장소의 원본 파일을 고친다. 검사 결과의 `error`·`sql` 에 나온 쿼리를
-   원본 파일에서 찾아(`grep`) 고친다. 큰 JSON 은 문자열 치환 대신 `python3` 으로 읽고 고쳐 다시 쓴다. 같은 종류의 패널·변수가 여러 개면 전부
-   같은 규칙으로 고친다. 고친 뒤에도 같은 오류가 나면 검사 결과의 `sql`(실제로 실행된 쿼리)을 보고 원본 쿼리를 다시 고친다.
+   API 로 대시보드를 받아 고치거나 저장하지 않는다. 저장소의 원본 파일을 고친다. 오류 패널의 `raw_sql`(원본 JSON 의 쿼리)을
+   원본 파일에서 찾아(`grep -F`) 고친다. `sql` 은 변수가 풀린 쿼리라 원본에는 그대로 없다. 큰 JSON 은 문자열 치환 대신 `python3` 으로 읽고 고쳐 다시 쓴다. 같은 종류의 패널·변수가 여러 개면 전부
+   같은 규칙으로 고친다. 고친 뒤에도 같은 오류가 나면 검사 결과의 `sql`(실제로 실행된 쿼리)과 `raw_sql` 을 비교해 원본 쿼리를 다시 고친다.
 4. **배포한다.** 원본 저장소의 절차를 따른다. GitOps 면 커밋·push 하고, 동기화 도구가 새 커밋으로 Synced 가 될 때까지 기다린다.
 5. **반영을 기다린 뒤 다시 검사한다.** 새 JSON 에만 있는 문자열로 배포 반영을 확인하고 전체 패널을 검사한다.
 
@@ -68,7 +68,9 @@ description: Grafana 대시보드를 만들거나 고칠 때 쓴다. 대시보�
   - 참·거짓은 명도 차이가 큰 두 색으로 구분한다.
   - 기록이 끊긴 구간은 거짓처럼 이어지지 않게 빈 값을 넣는다.
 - **관련 값은 한 패널에 모은다.** 같은 단위로 비교하는 값은 하나의 패널로 모은다(예: PM1·PM2.5·PM10).
-- **시간대**를 대시보드와 Grafana 설정에서 사용자 시간대로 맞춘다.
+- **시간대**를 사용자 시간대로 맞춘다. Grafana 전체의 기본 시간대는 서버 설정(`[date_formats] default_timezone`,
+  환경 변수로는 `GF_DATE_FORMATS_DEFAULT_TIMEZONE`)이고, 대시보드 JSON 의 `timezone` 은 그 대시보드만 바꾼다.
+  "기본 시간대"를 바꾸라는 요청은 서버 설정을 바꾼다.
 
 ## "No data" 원인 찾기
 
