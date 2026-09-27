@@ -101,6 +101,10 @@ unset T
 - DB 파드 안에서 실행한 셸을 강제로 죽이면 DB 프로세스가 복구를 반복할 수 있다. 시험은 별도 파드에서 한다.
 - ssh 작은따옴표 안에 SQL·JSON 따옴표를 넣으면 깨진다. 긴 SQL 은 heredoc 으로 넘긴다:
   `ssh <호스트> "kubectl -n <ns> exec -i deploy/<db> -- psql ..." <<'EOF' ... EOF`
+- 앱 폴더를 지워도 ApplicationSet 에 리소스 보존 옵션(`preserveResourcesOnDeletion`)이 있으면 리소스가 남는다. 먼저 레플리카를 0 으로
+  내리는 커밋을 동기화한 뒤 폴더를 지우고, 남은 리소스(네임스페이스)는 사용자 확인을 받아 지운다.
+- `Prune=false` 가 붙은 PVC 는 매니페스트를 지워도 남아 앱이 OutOfSync 로 보인다. 데이터를 옮긴 것을 확인한 뒤 그 PVC 를 지운다.
+- 서비스를 새 클러스터로 옮기면 GitOps 밖에서 만든 Secret 은 따라오지 않는다. 옮기기 전에 Secret 스크립트를 새 클러스터에 실행한다.
 
 ## 스크립트
 
